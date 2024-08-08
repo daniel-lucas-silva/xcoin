@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitepress';
+import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: 'XCoin',
@@ -82,9 +82,7 @@ export default defineConfig({
       apiKey: 'a18e2f4cc5665f6602c5631fd868adfd',
       indexName: 'xcoin'
     }, */
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/rainfu/xcoin' }
-    ]
+    socialLinks: [{ icon: 'github', link: 'https://github.com/rainfu/xcoin' }]
   }
 })
 

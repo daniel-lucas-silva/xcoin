@@ -1,12 +1,12 @@
 module.exports = {
-  name: "future",
+  name: 'future',
   db: {
     mongo: {
-      db: "future",
-    },
+      db: 'future'
+    }
   },
-  watch_symbols: "binanceusdm.BTC-USDT",
-  market: "both",
+  watch_symbols: 'binanceusdm.BTC-USDT',
+  market: 'both',
   future: true,
   poll_scan_time: 3000,
   sell_stop_pct: 1,
@@ -21,5 +21,5 @@ module.exports = {
   profit_win_max_rate: 50,
   profit_win_max_percent: 50,
   leverage: 10,
-  isolated: false,
-};
+  isolated: false
+}

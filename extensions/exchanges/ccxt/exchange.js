@@ -1,39 +1,42 @@
-const ccxt = require("ccxt"),
-  path = require("path"),
-  _ = require("lodash"),
-  colors = require("colors"),
-  tb = require("timebucket"),
-  HttpsProxyAgent = require("https-proxy-agent"),
-  filterSymbols = require("../../../lib/filter-symbol");
+const ccxt = require('ccxt')
+const fs = require('fs')
+const path = require('path')
+const _ = require('lodash')
+const colors = require('colors')
+const tb = require('timebucket')
+const HttpsProxyAgent = require('https-proxy-agent')
+const filterSymbols = require('../../../lib/filter-symbol')
 
-module.exports = function container(conf, so, inOptions) {
-  let public_client,
-    authed_client,
-    watch_client,
-    options = {
-      adjustForTimeDifference: true,
-    };
-  let exchagneId = "ccxt";
-  exchagneId = so.exchange;
+function CcxtConnector(conf, so, inOptions) {
+  let public_client
+  let authed_client
+  let watch_client
+  let options = {
+    adjustForTimeDifference: true
+  }
+  let exchagneId = 'ccxt'
+
+  exchagneId = so.exchange
+
   if (inOptions) {
-    options = Object.assign(options, inOptions);
+    options = Object.assign(options, inOptions)
   }
   function publicClient() {
     if (!public_client)
-      public_client = new ccxt[exchagneId]({ apiKey: "", secret: "", options });
-    setProxy(public_client);
-    return public_client;
+      public_client = new ccxt[exchagneId]({ apiKey: '', secret: '', options })
+    setProxy(public_client)
+    return public_client
   }
 
   function watchClient() {
     if (!watch_client)
       watch_client = new ccxt.pro[exchagneId]({
-        apiKey: "",
-        secret: "",
-        options,
-      });
-    setProxy(watch_client);
-    return watch_client;
+        apiKey: '',
+        secret: '',
+        options
+      })
+    setProxy(watch_client)
+    return watch_client
   }
 
   function authedClient() {
@@ -41,24 +44,24 @@ module.exports = function container(conf, so, inOptions) {
       if (
         !conf.secret.keys[exchagneId] ||
         !conf.secret.keys[exchagneId].key ||
-        conf.secret.keys[exchagneId].key === "YOUR-API-KEY"
+        conf.secret.keys[exchagneId].key === 'YOUR-API-KEY'
       ) {
-        throw new Error("bot.noExchangeCredentialsError");
+        throw new Error('bot.noExchangeCredentialsError')
       }
       authed_client = new ccxt[exchagneId]({
         apiKey: conf.secret.keys[exchagneId].key,
         secret: conf.secret.keys[exchagneId].secret,
         options,
-        enableRateLimit: true,
-      });
-      setProxy(authed_client);
+        enableRateLimit: true
+      })
+      setProxy(authed_client)
     }
-    return authed_client;
+    return authed_client
   }
   function setProxy(client) {
     if (so.proxy) {
-      const agent = new HttpsProxyAgent(so.proxy);
-      client.agent = agent;
+      const agent = new HttpsProxyAgent(so.proxy)
+      client.agent = agent
     }
   }
 
@@ -69,64 +72,64 @@ module.exports = function container(conf, so, inOptions) {
    * @returns {string}
    */
   function joinProduct(product_id) {
-    let split = product_id.split("-");
+    let split = product_id.split('-')
     if (split.length > 1) {
-      return split[0] + "/" + split[1];
+      return split[0] + '/' + split[1]
     }
-    return product_id;
+    return product_id
   }
 
   function retry(method, args, err) {
     if (
-      method !== "getTrades" &&
-      method !== "getKLines" &&
-      method !== "getTickers"
+      method !== 'getTrades' &&
+      method !== 'getKLines' &&
+      method !== 'getTickers'
     ) {
       console.error(
         (
-          "\nretry " +
+          '\nretry ' +
           exchagneId +
-          " API is down! unable to call " +
+          ' API is down! unable to call ' +
           method +
-          ", retrying in 20s"
+          ', retrying in 20s'
         ).red
-      );
-      if (err) console.error(err);
-      console.error(args.slice(0, -1));
+      )
+      if (err) console.error(err)
+      console.error(args.slice(0, -1))
     }
     setTimeout(function () {
-      exchange[method].apply(exchange, args);
-    }, 20000);
+      exchange[method].apply(exchange, args)
+    }, 20000)
   }
 
-  var orders = {};
+  var orders = {}
 
   var exchange = {
     name: exchagneId,
-    historyScan: "forward",
+    historyScan: 'forward',
     historyScanUsesTime: true,
     makerFee: 0.1,
     takerFee: 0.1,
     refreshProducts: function (cb, force = true) {
       if (!force) {
-        return cb(this.getProducts());
+        return cb(this.getProducts())
       }
-      var client = publicClient();
+      var client = publicClient()
       function getFullNum(num) {
         if (isNaN(num)) {
-          return num;
+          return num
         }
         if (_.isInteger(num)) {
-          if (num === 0) return 1;
+          if (num === 0) return 1
           else {
-            return "0." + "0".repeat(num - 1) + "1";
+            return '0.' + '0'.repeat(num - 1) + '1'
           }
         }
-        var str = "" + num;
+        var str = '' + num
         if (!/e/i.test(str)) {
-          return num;
+          return num
         }
-        return num.toFixed(18).replace(/0+$/, "");
+        return num.toFixed(18).replace(/0+$/, '')
       }
       client.fetchMarkets().then((markets) => {
         //console.log('market..', markets[0])
@@ -149,12 +152,12 @@ module.exports = function container(conf, so, inOptions) {
             ).toString(),
             increment: getFullNum(market.precision.price).toString(),
             asset_increment: getFullNum(market.precision.amount).toString(),
-            label: market.base + "/" + market.quote,
+            label: market.base + '/' + market.quote,
             exchagne_id: exchagneId,
-            product_id: market.base + "-" + market.quote,
-            normalized: exchagneId + "." + market.base + "-" + market.quote,
-          };
-        });
+            product_id: market.base + '-' + market.quote,
+            normalized: exchagneId + '.' + market.base + '-' + market.quote
+          }
+        })
         filterSymbols(
           this,
           products,
@@ -162,46 +165,43 @@ module.exports = function container(conf, so, inOptions) {
             currency: conf.product_currency,
             without_margin: conf.product_without_margin,
             min_volume: conf.product_min_volume,
-            active: conf.product_active,
+            active: conf.product_active
           },
           (filtered) => {
-            var target = require("path").resolve(
+            var target = path.resolve(
               __dirname,
-              "../../../data/exchanges/" + exchagneId + "_products.json"
-            );
-            require("fs").writeFileSync(
-              target,
-              JSON.stringify(filtered, null, 2)
-            );
-            if (cb) cb(filtered);
+              '../../../data/exchanges/' + exchagneId + '_products.json'
+            )
+            fs.writeFileSync(target, JSON.stringify(filtered, null, 2))
+            if (cb) cb(filtered)
           }
-        );
-      });
+        )
+      })
     },
     addProducts(plist, cb) {},
     getProducts: function () {
       try {
-        return require(`../../../data/exchanges/${exchagneId}_products.json`);
+        return require(`../../../data/exchanges/${exchagneId}_products.json`)
       } catch (e) {
-        return [];
+        return []
       }
     },
     getTrades: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = publicClient();
-      var startTime = undefined;
-      var args = {};
+      var func_args = [].slice.call(arguments)
+      var client = publicClient()
+      var startTime = undefined
+      var args = {}
       if (opts.from) {
-        startTime = opts.from;
+        startTime = opts.from
       } else {
-        startTime = parseInt(opts.to, 10) - 3600000;
-        args["endTime"] = opts.to;
+        startTime = parseInt(opts.to, 10) - 3600000
+        args['endTime'] = opts.to
       }
-      const symbol = joinProduct(opts.product_id);
-      console.log(symbol, "start", startTime, opts, args);
+      const symbol = joinProduct(opts.product_id)
+      console.log(symbol, 'start', startTime, opts, args)
       if (opts.last_trade_id) {
-        args.fromId = opts.last_trade_id;
-        args.fetchTradesMethod = "publicGetHistoricalTrades";
+        args.fromId = opts.last_trade_id
+        args.fetchTradesMethod = 'publicGetHistoricalTrades'
         client
           .fetchTrades(symbol, undefined, undefined, args)
           .then((result) => {
@@ -211,65 +211,65 @@ module.exports = function container(conf, so, inOptions) {
               time: trade.timestamp,
               size: parseFloat(trade.amount),
               price: parseFloat(trade.price),
-              side: trade.side,
-            }));
-            cb(null, trades);
+              side: trade.side
+            }))
+            cb(null, trades)
           })
           .catch(function (error) {
-            console.error("An error occurred", error);
-            return retry("getTrades", func_args);
-          });
+            console.error('An error occurred', error)
+            return retry('getTrades', func_args)
+          })
       } else {
         client
           .fetchTrades(symbol, startTime, undefined, {
-            fetchTradesMethod: "publicGetAggTrades",
+            fetchTradesMethod: 'publicGetAggTrades'
           })
           .then((result) => {
-            console.log("fetchAggTrades...", result.length);
+            console.log('fetchAggTrades...', result.length)
             if (!result || !result.length) {
-              cb(cb(null, []));
-              return;
+              cb(cb(null, []))
+              return
             }
-            args.fromId = result[0].id;
-            args.fetchTradesMethod = "publicGetHistoricalTrades";
+            args.fromId = result[0].id
+            args.fetchTradesMethod = 'publicGetHistoricalTrades'
             client
               .fetchTrades(symbol, undefined, undefined, args)
               .then((result) => {
-                console.log("fetchTrades history", result.length);
+                console.log('fetchTrades history', result.length)
                 var trades = result.map((trade) => ({
                   trade_id: trade.id,
                   time: trade.timestamp,
                   size: parseFloat(trade.amount),
                   price: parseFloat(trade.price),
-                  side: trade.side,
-                }));
-                cb(null, trades);
+                  side: trade.side
+                }))
+                cb(null, trades)
               })
               .catch(function (error) {
-                console.error("An error occurred", error);
-                return retry("getTrades", func_args);
-              });
-          });
+                console.error('An error occurred', error)
+                return retry('getTrades', func_args)
+              })
+          })
       }
     },
     getKLines: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = publicClient();
-      var startTime = undefined;
-      var args = {};
+      var func_args = [].slice.call(arguments)
+      var client = publicClient()
+      var startTime = undefined
+      var args = {}
       if (opts.from) {
-        startTime = opts.from;
+        startTime = opts.from
       }
-      const symbol = joinProduct(opts.product_id);
+      const symbol = joinProduct(opts.product_id)
       client
         .fetchOHLCV(symbol, opts.period, startTime, opts.limit, args)
         .then((result) => {
-          return result;
+          return result
         })
         .then((result) => {
           var klines = result.map((kline) => {
-            let d = tb(kline[0]).resize(opts.period);
-            let de = tb(kline[0]).resize(opts.period).add(1);
+            let d = tb(kline[0]).resize(opts.period)
+            let de = tb(kline[0]).resize(opts.period).add(1)
             return {
               period_id: d.toString(),
               time: d.toMilliseconds(),
@@ -279,13 +279,13 @@ module.exports = function container(conf, so, inOptions) {
               high: kline[2],
               low: kline[3],
               close: kline[4],
-              volume: kline[5],
-            };
-          });
-          cb(null, klines);
+              volume: kline[5]
+            }
+          })
+          cb(null, klines)
         })
         .catch(function (error) {
-          console.error("An error occurred", error);
+          console.error('An error occurred', error)
           if (
             error.name &&
             error.name.match(
@@ -293,28 +293,28 @@ module.exports = function container(conf, so, inOptions) {
             )
           ) {
             return cb(error.name, {
-              status: "rejected",
-              reject_reason: error.name,
-            });
+              status: 'rejected',
+              reject_reason: error.name
+            })
           }
-          return retry("getKLines", func_args);
-        });
+          return retry('getKLines', func_args)
+        })
     },
     getBalance: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
       client
         .fetchBalance()
         .then((result) => {
           //console.log('getBalanece..', opts, result)
-          var balance = { asset: 0, currency: 0 };
+          var balance = { asset: 0, currency: 0 }
           if (so.future) {
             Object.keys(result).forEach(function (key) {
               if (key === opts.currency) {
-                balance.currency = result[key].free + result[key].used;
-                balance.currency_hold = result[key].used;
+                balance.currency = result[key].free + result[key].used
+                balance.currency_hold = result[key].used
               }
-            });
+            })
             result.info.positions.forEach(function (market) {
               if (
                 opts.position_side &&
@@ -325,74 +325,74 @@ module.exports = function container(conf, so, inOptions) {
                   market.positionSide === opts.position_side
                 ) {
                   //  console.log('market', market)
-                  balance.asset = Math.abs(market.positionAmt);
-                  balance.unrealizedProfit = market.unrealizedProfit;
-                  balance.leverage = market.leverage;
-                  balance.isolated = market.isolated;
-                  balance.positionSide = market.positionSide;
-                  balance.entryPrice = market.entryPrice;
-                  balance.asset_hold = 0;
+                  balance.asset = Math.abs(market.positionAmt)
+                  balance.unrealizedProfit = market.unrealizedProfit
+                  balance.leverage = market.leverage
+                  balance.isolated = market.isolated
+                  balance.positionSide = market.positionSide
+                  balance.entryPrice = market.entryPrice
+                  balance.asset_hold = 0
                 }
-                if (!balance.assets) balance.assets = {};
+                if (!balance.assets) balance.assets = {}
                 if (market.positionAmt != 0) {
                   // console.log('market...', market)
-                  balance.assets[market.symbol.replace(opts.currency, "")] = {
+                  balance.assets[market.symbol.replace(opts.currency, '')] = {
                     asset: Math.abs(market.positionAmt),
                     unrealizedProfit: market.unrealizedProfit,
                     leverage: market.leverage,
                     isolated: market.isolated,
                     positionSide: market.positionSide,
                     entryPrice: market.entryPrice,
-                    asset_hold: 0,
-                  };
+                    asset_hold: 0
+                  }
                 }
               }
-            });
+            })
           } else {
             Object.keys(result).forEach(function (key) {
               if (key === opts.currency) {
-                balance.currency = result[key].free + result[key].used;
-                balance.currency_hold = result[key].used;
+                balance.currency = result[key].free + result[key].used
+                balance.currency_hold = result[key].used
               } else {
-                const num = result[key].free + result[key].used;
+                const num = result[key].free + result[key].used
                 if (num > 0) {
-                  if (!balance.assets) balance.assets = {};
+                  if (!balance.assets) balance.assets = {}
                   balance.assets[key] = {
                     asset: num,
-                    asset_hold: result[key].used,
-                  };
+                    asset_hold: result[key].used
+                  }
                 }
                 if (key === opts.asset) {
-                  balance.asset = result[key].free + result[key].used;
-                  balance.asset_hold = result[key].used;
+                  balance.asset = result[key].free + result[key].used
+                  balance.asset_hold = result[key].used
                 }
               }
-            });
+            })
           }
           // console.log('getBalance result', opts, balance)
-          cb(null, balance);
+          cb(null, balance)
         })
         .catch(function (error) {
-          console.error("An error occurred", error);
-          return retry("getBalance", func_args);
-        });
+          console.error('An error occurred', error)
+          return retry('getBalance', func_args)
+        })
     },
     getQuote: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = publicClient();
+      var func_args = [].slice.call(arguments)
+      var client = publicClient()
       // console.log('getQuote ...', client.has)
-      if (client.has["fetchBidsAsks"]) {
+      if (client.has['fetchBidsAsks']) {
         client
           .fetchBidsAsks([joinProduct(opts.product_id)])
           .then((result) => {
             // console.log('getQuote result...', result)
-            let res = result[Object.keys(result)[0]];
-            cb(null, { bid: res.bid, ask: res.ask });
+            let res = result[Object.keys(result)[0]]
+            cb(null, { bid: res.bid, ask: res.ask })
           })
           .catch(function (error) {
-            console.error("An error occurred", error);
-            return retry("getQuote", func_args);
-          });
+            console.error('An error occurred', error)
+            return retry('getQuote', func_args)
+          })
       } else {
         client
           .fetchTicker(joinProduct(opts.product_id))
@@ -400,24 +400,24 @@ module.exports = function container(conf, so, inOptions) {
             // console.log('getQuote result...', opts, result)
             cb(null, {
               bid: result.bid || result.close,
-              ask: result.ask || result.close,
-            });
+              ask: result.ask || result.close
+            })
           })
           .catch(function (error) {
-            console.error("An error occurred", error);
-            return retry("getQuote", func_args);
-          });
+            console.error('An error occurred', error)
+            return retry('getQuote', func_args)
+          })
       }
     },
     getTickers: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = publicClient();
+      var func_args = [].slice.call(arguments)
+      var client = publicClient()
       var symbols =
         opts &&
         opts.symbols &&
         opts.symbols.map((s) => {
-          return joinProduct(s.product_id);
-        });
+          return joinProduct(s.product_id)
+        })
       //  console.log('symbols', symbols)
       client
         .fetchTickers(symbols)
@@ -425,16 +425,16 @@ module.exports = function container(conf, so, inOptions) {
           // console.log('getTickers result...', opts, result)
           Object.keys(result).forEach((r) => {
             result[r].normalized =
-              (options.defaultType === "future"
-                ? exchagneId + "future."
-                : exchagneId + ".") + result[r].symbol.replace("/", "-");
+              (options.defaultType === 'future'
+                ? exchagneId + 'future.'
+                : exchagneId + '.') + result[r].symbol.replace('/', '-')
             /* if (!result[r].timestamp)  */
-            result[r].timestamp = new Date().getTime();
-          });
-          cb(null, result);
+            result[r].timestamp = new Date().getTime()
+          })
+          cb(null, result)
         })
         .catch(function (error) {
-          console.error("An error occurred", error);
+          console.error('An error occurred', error)
 
           if (
             error.name &&
@@ -443,26 +443,26 @@ module.exports = function container(conf, so, inOptions) {
             )
           ) {
             return cb(error.name, {
-              status: "rejected",
-              reject_reason: error.name,
-            });
+              status: 'rejected',
+              reject_reason: error.name
+            })
           }
-          return retry("getTickers", func_args);
-        });
+          return retry('getTickers', func_args)
+        })
     },
     watchTickers: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = watchClient();
-      if (!client.has["watchTicker"]) {
-        console.log(client.id, "does not support watchTicker yet");
-        return;
+      var func_args = [].slice.call(arguments)
+      var client = watchClient()
+      if (!client.has['watchTicker']) {
+        console.log(client.id, 'does not support watchTicker yet')
+        return
       }
       var symbols =
         opts &&
         opts.symbols &&
         opts.symbols.map((s) => {
-          return joinProduct(s.product_id);
-        });
+          return joinProduct(s.product_id)
+        })
       // console.log('symbols', symbols)
       client
         .watchTickers(symbols)
@@ -470,16 +470,15 @@ module.exports = function container(conf, so, inOptions) {
           // console.log('getTickers result...', opts, result)
           Object.keys(result).forEach((r) => {
             result[r].normalized =
-              (options.defaultType === "future"
-                ? exchagneId + "future."
-                : exchagneId + ".") + result[r].symbol.replace("/", "-");
-            if (!result[r].timestamp)
-              result[r].timestamp = new Date().getTime();
-          });
-          cb(null, result);
+              (options.defaultType === 'future'
+                ? exchagneId + 'future.'
+                : exchagneId + '.') + result[r].symbol.replace('/', '-')
+            if (!result[r].timestamp) result[r].timestamp = new Date().getTime()
+          })
+          cb(null, result)
         })
         .catch(function (error) {
-          console.error("An error occurred", error);
+          console.error('An error occurred', error)
           if (
             error.name &&
             error.name.match(
@@ -487,41 +486,41 @@ module.exports = function container(conf, so, inOptions) {
             )
           ) {
             return cb(error.name, {
-              status: "rejected",
-              reject_reason: error.name,
-            });
+              status: 'rejected',
+              reject_reason: error.name
+            })
           }
-          return retry("getTickers", func_args);
-        });
+          return retry('getTickers', func_args)
+        })
     },
     getDepth: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = publicClient();
+      var func_args = [].slice.call(arguments)
+      var client = publicClient()
       client
         .fetchOrderBook(joinProduct(opts.product_id), { limit: opts.limit })
         .then((result) => {
           // console.log('getDepth result...', opts, result)
-          cb(null, result);
+          cb(null, result)
         })
         .catch(function (error) {
-          console.error("An error ocurred", error);
-          return retry("getDepth", func_args);
-        });
+          console.error('An error ocurred', error)
+          return retry('getDepth', func_args)
+        })
     },
     cancelOrder: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
       client.cancelOrder(opts.order_id, joinProduct(opts.product_id)).then(
         function (body) {
           // console.log('cancelOrder result', opts, body)
           if (
             body &&
-            (body.message === "Order already done" ||
-              body.message === "order not found")
+            (body.message === 'Order already done' ||
+              body.message === 'order not found')
           )
-            return cb(body);
-          cb(body);
-          return;
+            return cb(body)
+          cb(body)
+          return
         },
         function (err) {
           // match error against string:
@@ -533,49 +532,49 @@ module.exports = function container(conf, so, inOptions) {
             ) {
               console.error(
                 (
-                  "\ncancelOrder retry - unknown Order: " +
+                  '\ncancelOrder retry - unknown Order: ' +
                   JSON.stringify(opts) +
-                  " - " +
+                  ' - ' +
                   err
                 ).cyan
-              );
+              )
             } else {
               // retry is allowed for this error
-              return retry("cancelOrder", func_args, err);
+              return retry('cancelOrder', func_args, err)
             }
           }
-          cb(null, err);
+          cb(null, err)
         }
-      );
+      )
     },
     buy: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
-      if (typeof opts.post_only === "undefined") {
-        opts.post_only = true;
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
+      if (typeof opts.post_only === 'undefined') {
+        opts.post_only = true
       }
-      opts.type = "limit";
-      var args = {};
-      if (opts.order_type === "taker") {
-        delete opts.post_only;
-        delete opts.price;
-        opts.type = "market";
+      opts.type = 'limit'
+      var args = {}
+      if (opts.order_type === 'taker') {
+        delete opts.post_only
+        delete opts.price
+        opts.type = 'market'
       } else {
-        args.timeInForce = "GTC";
-        args.postOnly = opts.post_only;
+        args.timeInForce = 'GTC'
+        args.postOnly = opts.post_only
       }
       if (!client.has.createMarketOrder) {
-        opts.type = "limit";
+        opts.type = 'limit'
       }
-      opts.side = "buy";
-      delete opts.order_type;
+      opts.side = 'buy'
+      delete opts.order_type
       if (so.future) {
-        args.positionSide = opts.position_side || "LONG";
-        if (args.positionSide === "SHORT") {
-          opts.side = "sell";
+        args.positionSide = opts.position_side || 'LONG'
+        if (args.positionSide === 'SHORT') {
+          opts.side = 'sell'
         }
       }
-      var order = {};
+      var order = {}
       //  console.log('\nbuy opts', opts, args)
       client
         .createOrder(
@@ -588,28 +587,28 @@ module.exports = function container(conf, so, inOptions) {
         )
         .then((result) => {
           //  console.log('buy result...', opts, result)
-          if (result && result.message === "Insufficient funds") {
+          if (result && result.message === 'Insufficient funds') {
             order = {
-              status: "rejected",
-              reject_reason: "balance",
-            };
-            return cb(null, order);
+              status: 'rejected',
+              reject_reason: 'balance'
+            }
+            return cb(null, order)
           }
           order = {
             id: result ? result.id : null,
-            status: "open",
+            status: 'open',
             price: result.average,
             size: this.roundToNearest(opts.size, opts),
             post_only: !!opts.post_only,
             created_at: new Date().getTime(),
-            filled_size: "0",
-            order_type: opts.type === "limit" ? "maker" : "taker",
-          };
-          orders["~" + result.id] = order;
-          cb(null, order);
+            filled_size: '0',
+            order_type: opts.type === 'limit' ? 'maker' : 'taker'
+          }
+          orders['~' + result.id] = order
+          cb(null, order)
         })
         .catch(function (error) {
-          console.error("An error occurred", error);
+          console.error('An error occurred', error)
 
           // decide if this error is allowed for a retry:
           // {"code":-1013,"msg":"Filter failure: MIN_NOTIONAL"}
@@ -621,48 +620,48 @@ module.exports = function container(conf, so, inOptions) {
             )
           ) {
             return cb(null, {
-              status: "rejected",
-              reject_reason: error.name,
-            });
+              status: 'rejected',
+              reject_reason: error.name
+            })
           }
           if (error.message.match(new RegExp(/-1013|MIN_NOTIONAL|-2010/))) {
             return cb(null, {
-              status: "rejected",
-              reject_reason: "balance",
-            });
+              status: 'rejected',
+              reject_reason: 'balance'
+            })
           }
-          return retry("buy", func_args);
-        });
+          return retry('buy', func_args)
+        })
     },
 
     sell: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
-      if (typeof opts.post_only === "undefined") {
-        opts.post_only = true;
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
+      if (typeof opts.post_only === 'undefined') {
+        opts.post_only = true
       }
-      opts.type = "limit";
-      var args = {};
-      if (opts.order_type === "taker") {
-        delete opts.post_only;
-        delete opts.price;
-        opts.type = "market";
+      opts.type = 'limit'
+      var args = {}
+      if (opts.order_type === 'taker') {
+        delete opts.post_only
+        delete opts.price
+        opts.type = 'market'
       } else {
-        args.timeInForce = "GTC";
-        args.postOnly = opts.post_only;
+        args.timeInForce = 'GTC'
+        args.postOnly = opts.post_only
       }
       if (!client.has.createMarketOrder) {
-        opts.type = "limit";
+        opts.type = 'limit'
       }
-      opts.side = "sell";
+      opts.side = 'sell'
       if (so.future) {
-        args.positionSide = opts.position_side || "LONG";
-        if (args.positionSide === "SHORT") {
-          opts.side = "buy";
+        args.positionSide = opts.position_side || 'LONG'
+        if (args.positionSide === 'SHORT') {
+          opts.side = 'buy'
         }
       }
-      delete opts.order_type;
-      var order = {};
+      delete opts.order_type
+      var order = {}
       // console.log('sell opts', opts, args)
       client
         .createOrder(
@@ -675,28 +674,28 @@ module.exports = function container(conf, so, inOptions) {
         )
         .then((result) => {
           // console.log('sell result...', opts, result)
-          if (result && result.message === "Insufficient funds") {
+          if (result && result.message === 'Insufficient funds') {
             order = {
-              status: "rejected",
-              reject_reason: "balance",
-            };
-            return cb(null, order);
+              status: 'rejected',
+              reject_reason: 'balance'
+            }
+            return cb(null, order)
           }
           order = {
             id: result ? result.id : null,
-            status: "open",
+            status: 'open',
             price: result.average,
             size: this.roundToNearest(opts.size, opts),
             post_only: !!opts.post_only,
             created_at: new Date().getTime(),
-            filled_size: "0",
-            order_type: opts.type === "limit" ? "maker" : "taker",
-          };
-          orders["~" + result.id] = order;
-          cb(null, order);
+            filled_size: '0',
+            order_type: opts.type === 'limit' ? 'maker' : 'taker'
+          }
+          orders['~' + result.id] = order
+          cb(null, order)
         })
         .catch(function (error) {
-          console.error("An error occurred", error);
+          console.error('An error occurred', error)
 
           // decide if this error is allowed for a retry:
           // {"code":-1013,"msg":"Filter failure: MIN_NOTIONAL"}
@@ -708,53 +707,53 @@ module.exports = function container(conf, so, inOptions) {
             )
           ) {
             return cb(null, {
-              status: "rejected",
-              reject_reason: error.name,
-            });
+              status: 'rejected',
+              reject_reason: error.name
+            })
           }
           if (error.message.match(new RegExp(/-1013|MIN_NOTIONAL|-2010/))) {
             return cb(null, {
-              status: "rejected",
-              reject_reason: "balance",
-            });
+              status: 'rejected',
+              reject_reason: 'balance'
+            })
           }
 
-          return retry("sell", func_args);
-        });
+          return retry('sell', func_args)
+        })
     },
 
     roundToNearest: function (numToRound, opts) {
       var numToRoundTo = _.find(this.getProducts(), {
-        asset: opts.product_id.split("-")[0],
-        currency: opts.product_id.split("-")[1],
-      }).min_size;
-      numToRoundTo = 1 / numToRoundTo;
+        asset: opts.product_id.split('-')[0],
+        currency: opts.product_id.split('-')[1]
+      }).min_size
+      numToRoundTo = 1 / numToRoundTo
 
-      return Math.floor(numToRound * numToRoundTo) / numToRoundTo;
+      return Math.floor(numToRound * numToRoundTo) / numToRoundTo
     },
 
     getOrder: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
-      var order = orders["~" + opts.order_id];
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
+      var order = orders['~' + opts.order_id]
       // console.log('getOrder', opts, opts.order_id, joinProduct(opts.product_id))
       client.fetchOrder(opts.order_id, joinProduct(opts.product_id)).then(
         function (body) {
           // console.log('getOrder', body)
           if (order) {
-            if (body.status !== "open" && body.status !== "canceled") {
-              order.status = "done";
-              order.done_at = new Date().getTime();
+            if (body.status !== 'open' && body.status !== 'canceled') {
+              order.status = 'done'
+              order.done_at = new Date().getTime()
               order.price = body.average
                 ? parseFloat(body.average)
-                : parseFloat(body.price);
+                : parseFloat(body.price)
               order.filled_size =
-                parseFloat(body.amount) - parseFloat(body.remaining);
-              return cb(null, order);
+                parseFloat(body.amount) - parseFloat(body.remaining)
+              return cb(null, order)
             }
-            cb(null, order);
+            cb(null, order)
           } else {
-            cb(null, body);
+            cb(null, body)
           }
         },
         function (err) {
@@ -762,97 +761,99 @@ module.exports = function container(conf, so, inOptions) {
             err.name &&
             err.name.match(new RegExp(/InvalidOrder|BadRequest/))
           ) {
-            return cb(err);
+            return cb(err)
           }
-          return retry("getOrder", func_args, err);
+          return retry('getOrder', func_args, err)
         }
-      );
+      )
     },
     getOrders: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
       // console.log('getOrder', opts, opts.order_id, joinProduct(opts.product_id))
       client
         .fetchOrders(joinProduct(opts.product_id), opts.since, opts.limit)
         .then(
           function (body) {
             // console.log('getOrders', body)
-            cb(null, body);
+            cb(null, body)
           },
           function (err) {
             if (
               err.name &&
               err.name.match(new RegExp(/InvalidOrder|BadRequest/))
             ) {
-              return cb(err);
+              return cb(err)
             }
-            return retry("getOrders", func_args, err);
+            return retry('getOrders', func_args, err)
           }
-        );
+        )
     },
     getCursor: function (trade) {
       // console.log('getCursor result...', trade, (trade.time || trade))
-      return trade.time || trade;
+      return trade.time || trade
     },
     updateLeverage: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
       client
         .setLeverage(opts.leverage, joinProduct(opts.product_id))
         .then((result) => {
           // console.log("updateLeverage result...", opts, result);
-          cb(null, result);
+          cb(null, result)
         })
         .catch(function (error) {
-          console.error("An error ocurred", error);
-          return retry("updateLeverage", func_args);
-        });
+          console.error('An error ocurred', error)
+          return retry('updateLeverage', func_args)
+        })
     },
     updateMarginMode: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
       client
         .setMarginMode(opts.marginType, joinProduct(opts.product_id))
         .then((result) => {
-          console.log("updateMarginType result...", opts, result);
-          cb(null, result);
+          console.log('updateMarginType result...', opts, result)
+          cb(null, result)
         })
         .catch(function (error) {
-          console.error("An error ocurred", error);
-          return retry("updateMarginType", func_args);
-        });
+          console.error('An error ocurred', error)
+          return retry('updateMarginType', func_args)
+        })
     },
     initFees() {
       if (
         conf.secret.keys[exchagneId] &&
         conf.secret.keys[exchagneId].takerFee
       ) {
-        this.takerFee = conf.secret.keys[exchagneId].takerFee;
+        this.takerFee = conf.secret.keys[exchagneId].takerFee
       }
       if (
         conf.secret.keys[exchagneId] &&
         conf.secret.keys[exchagneId].makerFee
       ) {
-        this.makerFee = conf.secret.keys[exchagneId].makerFee;
+        this.makerFee = conf.secret.keys[exchagneId].makerFee
       }
       if (so.takerFee) {
-        this.takerFee = so.takerFee;
+        this.takerFee = so.takerFee
       }
       if (so.makerFee) {
-        this.makerFee = so.makerFee;
+        this.makerFee = so.makerFee
       }
     },
     updateSymbols(symbols) {
-      products = this.getProducts();
+      products = this.getProducts()
       if (symbols) {
         return symbols.filter((sy) => {
-          return products.find((p) => p.normalized === sy.normalized);
-        });
+          return products.find((p) => p.normalized === sy.normalized)
+        })
       } else {
-        return [];
+        return []
       }
-    },
-  };
-  so.symbols = exchange.updateSymbols(so.symbols);
-  return exchange;
-};
+    }
+  }
+  so.symbols = exchange.updateSymbols(so.symbols)
+  return exchange
+}
+
+module.exports = CcxtConnector

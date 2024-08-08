@@ -6,11 +6,11 @@ module.exports = {
   poll_watch_wait: 1000,
   db: {
     mongo: {
-      db: "xcoin",
-    },
+      db: 'xcoin'
+    }
   },
   server: {
     port: 17810,
-    save_pairs: "binanceusdm.BTC-USDT,binanceusdm.DOGE-USDT",
-  },
-};
+    save_pairs: 'binanceusdm.BTC-USDT,binanceusdm.DOGE-USDT'
+  }
+}

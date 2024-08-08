@@ -6,15 +6,15 @@ console.log('start connect..' + host)
 const ws = new Websocket(host)
 ws.on('error', console.error)
 ws.on('close', function close(evt) {
-    console.log('close', evt)
+  console.log('close', evt)
 })
 
 ws.on('open', function open() {
-    const action = 'l'
-    console.log('action: %s', action)
-    ws.send(JSON.stringify({ action: action }))
+  const action = 'l'
+  console.log('action: %s', action)
+  ws.send(JSON.stringify({ action: action }))
 })
 
 ws.on('message', function message(data) {
-    console.log('received: %s', JSON.parse(data))
+  console.log('received: %s', JSON.parse(data))
 })

@@ -1,25 +1,23 @@
-const ccxt = require('ccxt')
+import { Dict, Exchange, ExchangeError, Market, OHLCV, Trade } from 'ccxt'
 
-const exchangeConfig = require('./Const.json')
-const Exchange = ccxt.Exchange
-const ExchangeError = ccxt.ExchangeError
-const { Swapper } = require('./PancakeswapSwapper')
-const { ApolloClient, InMemoryCache, HttpLink } = require('@apollo/client')
-const { fetch } = require('cross-fetch')
-const {
-  getRecentHotTokens,
-  getToken,
-  getTokens,
-  getTokenWithPool,
-  getTokenByAsset,
-  getTokenExtraInfo,
+import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client'
+import { fetch } from 'cross-fetch'
+import tb from 'timebucket'
+import exchangeConfig from './Const.json'
+import { Swapper } from './PancakeswapSwapper'
+import {
+  getBundle,
   getPool,
   getPools,
-  getPoolWithHour,
   getPoolWithDay,
-  getBundle
-} = require('./Query')
-const tb = require('timebucket')
+  getPoolWithHour,
+  getRecentHotTokens,
+  getToken,
+  getTokenByAsset,
+  getTokenExtraInfo,
+  getTokens,
+  getTokenWithPool
+} from './Query'
 
 class PancakeSwap extends Exchange {
   describe() {
@@ -515,7 +513,7 @@ class PancakeSwap extends Exchange {
   async fetchTrades(opts, params = {}) {
     console.log('implementing...')
   }
-  parseTrade(trade, market = undefined) {
+  parseTrade(trade: Dict, market?: Market): Trade {
     //console.log('trade', trade)
     const timestamp = this.safeTimestamp(trade, 'hourStartUnix')
     const price =
@@ -534,7 +532,7 @@ class PancakeSwap extends Exchange {
       timestamp: timestamp,
       datetime: this.iso8601(timestamp),
       type: undefined,
-      price: this.numberToString(price),
+      price: price,
       amount: amount,
       info: trade
     }
@@ -582,6 +580,7 @@ class PancakeSwap extends Exchange {
       }
     })
   }
+
   async fetchOHLCV2(opts, params = {}) {
     const defaultLimit = 100
     const maxLimit = 1000 //1619136000 1628208000000
@@ -625,7 +624,8 @@ class PancakeSwap extends Exchange {
       }
     })
   }
-  parseOHLCV(ohlcv) {
+
+  parseOHLCV(ohlcv: any, market?: Market): OHLCV {
     return [
       this.safeTimestamp(ohlcv, 'periodStartUnix'),
       this.safeNumber(ohlcv, 'open'),
@@ -637,4 +637,4 @@ class PancakeSwap extends Exchange {
   }
 }
 
-module.exports = PancakeSwap
+export default PancakeSwap

@@ -1,12 +1,12 @@
-var { getInitData, getRefreshData } = require("./status"),
+var { getInitData, getRefreshData } = require('./status'),
   {
     getBacktestList,
     delBacktest,
     getSimList,
     delSim,
     addSim,
-    backtestSim,
-  } = require("./backtest"),
+    backtestSim
+  } = require('./backtest'),
   {
     addSymbol,
     removeAllSymbol,
@@ -15,11 +15,11 @@ var { getInitData, getRefreshData } = require("./status"),
     buy,
     sell,
     getBalance,
-    getDemoBot,
-  } = require("./operation"),
-  { updateConfig, updateSymbolFuture } = require("./config"),
-  { checkVersion } = require("./panacea"),
-  { getProducts, getKlines, getTickers, getPickerNormal } = require("./market");
+    getDemoBot
+  } = require('./operation'),
+  { updateConfig, updateSymbolFuture } = require('./config'),
+  { checkVersion } = require('./panacea'),
+  { getProducts, getKlines, getTickers, getPickerNormal } = require('./market')
 module.exports = function api() {
   return {
     getInitData,
@@ -44,6 +44,6 @@ module.exports = function api() {
     getTickers,
     getPickerNormal,
     getBalance,
-    getDemoBot,
-  };
-};
+    getDemoBot
+  }
+}

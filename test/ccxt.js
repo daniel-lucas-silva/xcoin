@@ -3,66 +3,78 @@
  */
 const ccxt = require('ccxt')
 const test = async () => {
-    // let exchanges = ['binanceusdm']
-    // let exchanges = ccxt.exchanges
+  // let exchanges = ['binanceusdm']
+  // let exchanges = ccxt.exchanges
 
-    const exchange = new ccxt.binanceusdm()
-    const trades = await exchange.fetchTrades('BTC/USDT', undefined, 100)
-    console.log(trades)
-    /* const markKlines = await exchange.fetchOHLCV('ADA/USDT', '1h', undefined, 2, { 'price': 'mark' })
+  const exchange = new ccxt.binanceusdm()
+  const trades = await exchange.fetchTrades('BTC/USDT', undefined, 100)
+  console.log(trades)
+  /* const markKlines = await exchange.fetchOHLCV('ADA/USDT', '1h', undefined, 2, { 'price': 'mark' })
     console.log(markKlines)
     const indexKlines = await exchange.fetchOHLCV('ADA/USDT', '1h', undefined, 2, { 'price': 'index' })
     console.log(indexKlines)
     const premiumIndex = await exchange.fetchOHLCV('ADA/USDT', '1h', undefined, 2, { 'price': 'index' })
     console.log(premiumIndex) */
-    return
-    let exchanges = ['alpaca',
-        'bitcoincom',
-        'bitopro',
-        'btctradeua',
-        'coinspot',
-        'flowbtc',
-        'itbit',
-        'mexc',
-        'mexc3',
-        'ndax',
-        'novadax',
-        'timex',
-        'wavesexchange',
-        'wazirx',
-        'whitebit',
-        'woo']
-    for (let i in exchanges) {
-        let exchange = new ccxt[exchanges[i]]
-        // console.log('exchange,', exchanges[i])
-        try {
-            console.time(exchanges[i])
-            let res = await exchange.loadMarkets({
-                timeout: 3000
-            })
-            let btcusd = Object.keys(res).find(f => f.indexOf('DUSK/USD') === 0)
-            if (!btcusd) {
-                btcusd = Object.keys(res).find(f => f.indexOf('BTC/USD') === 0)
-            }
-            if (!btcusd) {
-                btcusd = Object.keys(res).find(f => f.indexOf('/USD') >= 0)
-            }
-            if (!btcusd) {
-                btcusd = Object.keys(res)[0]
-            }
-            let date = (new Date)
-            date.setDate(date.getDate() - 1)
-            let time = date.getTime()
-            // console.log('date', date.toString())
-            let res2 = await exchange.fetchOHLCV(btcusd, '1h', time, 1000)
-            if (res2) {
-                console.log(exchanges[i], 'fetchOHLCV', Object.keys(res).length, btcusd, date.toString(), res2.length, res2[0], res2[1], (res2[1][0] - res2[0][0]) / 1000)
-            }
-            console.timeEnd(exchanges[i])
-        } catch (e) {
-            //  console.log(exchange.id, 'error', e)
-        }
+  return
+  let exchanges = [
+    'alpaca',
+    'bitcoincom',
+    'bitopro',
+    'btctradeua',
+    'coinspot',
+    'flowbtc',
+    'itbit',
+    'mexc',
+    'mexc3',
+    'ndax',
+    'novadax',
+    'timex',
+    'wavesexchange',
+    'wazirx',
+    'whitebit',
+    'woo'
+  ]
+  for (let i in exchanges) {
+    let exchange = new ccxt[exchanges[i]]()
+    // console.log('exchange,', exchanges[i])
+    try {
+      console.time(exchanges[i])
+      let res = await exchange.loadMarkets({
+        timeout: 3000
+      })
+      let btcusd = Object.keys(res).find((f) => f.indexOf('DUSK/USD') === 0)
+      if (!btcusd) {
+        btcusd = Object.keys(res).find((f) => f.indexOf('BTC/USD') === 0)
+      }
+      if (!btcusd) {
+        btcusd = Object.keys(res).find((f) => f.indexOf('/USD') >= 0)
+      }
+      if (!btcusd) {
+        btcusd = Object.keys(res)[0]
+      }
+      let date = new Date()
+      date.setDate(date.getDate() - 1)
+      let time = date.getTime()
+      // console.log('date', date.toString())
+      let res2 = await exchange.fetchOHLCV(btcusd, '1h', time, 1000)
+      if (res2) {
+        console.log(
+          exchanges[i],
+          'fetchOHLCV',
+          Object.keys(res).length,
+          btcusd,
+          date.toString(),
+          res2.length,
+          res2[0],
+          res2[1],
+          (res2[1][0] - res2[0][0]) / 1000
+        )
+      }
+      console.timeEnd(exchanges[i])
+    } catch (e) {
+      //  console.log(exchange.id, 'error', e)
     }
+  }
 }
 test()
 

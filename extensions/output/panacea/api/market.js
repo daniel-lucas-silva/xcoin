@@ -1,4 +1,4 @@
-var coreFactory = require("../../../../lib/core");
+var coreFactory = require('../../../../lib/core')
 /**
  * get exchagne all products
  * @param {*} message
@@ -6,14 +6,14 @@ var coreFactory = require("../../../../lib/core");
  * @param {*} s
  */
 const getProducts = (message, cb, s, conf, engine) => {
-  let core = coreFactory(s, conf, engine);
-  let pData = core.getExchangeProducts(s.options.exchange, "USDT", "detail");
+  let core = coreFactory(s, conf, engine)
+  let pData = core.getExchangeProducts(s.options.exchange, 'USDT', 'detail')
   let data = {
     action: message.action,
-    data: pData[0].products,
-  };
-  if (cb) cb(data);
-};
+    data: pData[0].products
+  }
+  if (cb) cb(data)
+}
 /**
  * get exchange symbols real-time price
  * @param {*} message
@@ -27,17 +27,17 @@ const getTickers = (message, cb, s) => {
         return {
           symbol: realTickers[t].symbol,
           price: realTickers[t].close,
-          percentage: realTickers[t].percentage,
-        };
-      });
+          percentage: realTickers[t].percentage
+        }
+      })
       let data = {
         action: message.action,
-        data: tickers,
-      };
-      if (cb) cb(data);
+        data: tickers
+      }
+      if (cb) cb(data)
     }
-  });
-};
+  })
+}
 /**
  * get exchange hot products
  * @param {} message
@@ -46,10 +46,12 @@ const getTickers = (message, cb, s) => {
 const getPickerNormal = (message, cb, s) => {
   let data = {
     action: message.action,
-    data: require(`../../../../data/exchanges/${s.options.exchange}_hot_products.json`),
-  };
-  if (cb) cb(data);
-};
+    data: require(
+      `../../../../data/exchanges/${s.options.exchange}_hot_products.json`
+    )
+  }
+  if (cb) cb(data)
+}
 /**
  * get exchange symbol klines
  * @param {*} message
@@ -59,21 +61,21 @@ const getPickerNormal = (message, cb, s) => {
 const getKlines = (message, cb, s) => {
   s.exchange.getKLines(message.data, (err, klines) => {
     if (err) {
-      return;
+      return
     }
     let data = {
       action: message.action,
       data: {
         period: message.data.period,
-        klines,
-      },
-    };
-    if (cb) cb(data);
-  });
-};
+        klines
+      }
+    }
+    if (cb) cb(data)
+  })
+}
 module.exports = {
   getKlines,
   getProducts,
   getPickerNormal,
-  getTickers,
-};
+  getTickers
+}

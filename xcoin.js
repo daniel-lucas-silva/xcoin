@@ -1,54 +1,56 @@
-var path = require("path"),
-  program = require("commander"),
-  _ = require("lodash"),
-  minimist = require("minimist"),
-  version = require("./package.json").version,
-  loggerInstance = require("./lib/logger"),
-  EventEmitter = require("events"),
-  fs = require("fs");
+const path = require('path')
+const program = require('commander')
+const _ = require('lodash')
+const minimist = require('minimist')
+const version = require('./package.json').version
+const loggerInstance = require('./lib/logger')
+const EventEmitter = require('events')
+const fs = require('fs')
+const { MongoClient } = require('mongodb')
 
-program._name = "xcoin";
-program.version = version;
+program._name = 'xcoin'
+program.version = version
+
 initXcoin(function (err, xcoin) {
   if (err) {
-    throw err;
+    throw err
   }
-  var command_directory = "./commands";
+  var command_directory = './commands'
   fs.readdir(command_directory, function (err, files) {
     if (err) {
-      throw err;
+      throw err
     }
     var commands = files
       .map((file) => {
-        return path.join(command_directory, file);
+        return path.join(command_directory, file)
       })
       .filter((file) => {
-        return fs.statSync(file).isFile() && file.lastIndexOf(".js") >= 0;
-      });
+        return fs.statSync(file).isFile() && file.lastIndexOf('.js') >= 0
+      })
     commands.forEach((file) => {
-      require(path.resolve(__dirname, file.replace(".js", "")))(
+      require(path.resolve(__dirname, file.replace('.js', '')))(
         program,
         xcoin.conf
-      );
-    });
-    program.command("*", "Display help", { noHelp: true }).action((cmd) => {
-      console.log("Invalid command: " + cmd);
-      program.help();
-    });
-    program.parse(process.argv);
-  });
-});
+      )
+    })
+    program.command('*', 'Display help', { noHelp: true }).action((cmd) => {
+      console.log('Invalid command: ' + cmd)
+      program.help()
+    })
+    program.parse(process.argv)
+  })
+})
 
 /**
  * init xcoin config ,db and other core
  * @param {*} cb
  */
 function initXcoin(cb) {
-  var xcoin = { version };
-  var args = minimist(process.argv.slice(3));
-  xcoin.conf = initConfig(args);
-  initExtra(xcoin.conf, args);
-  initDb(xcoin, xcoin.conf, cb);
+  var xcoin = { version }
+  var args = minimist(process.argv.slice(3))
+  xcoin.conf = initConfig(args)
+  initExtra(xcoin.conf, args)
+  initDb(xcoin, xcoin.conf, cb)
 }
 
 /**
@@ -62,28 +64,27 @@ function initConfig(args) {
     secret = {},
     conf = {},
     overrides = {},
-    overridesSecret = {};
+    overridesSecret = {}
   try {
-    conf = require("./config/conf-base");
-    secret = require("./config/conf-secret");
+    conf = require('./config/conf-base')
+    secret = require('./config/conf-secret')
   } catch (err) {
-    console.error(err + " base config file is not present!");
-    process.exit(1);
+    console.error(err + ' base config file is not present!')
+    process.exit(1)
   }
   // 2. load conf overrides file if present or last_config
   if (!_.isUndefined(args.conf)) {
     try {
-      overrides = require(path.resolve(process.cwd(), args.conf));
+      overrides = require(path.resolve(process.cwd(), args.conf))
     } catch (err) {
-      console.error(err + ", failed to load input conf overrides file!");
+      console.error(err + ', failed to load input conf overrides file!')
     }
   } else {
     // 2. load last used conf overrides file if present
     try {
-      overrides = require(path.resolve(
-        process.cwd(),
-        "./data/config/last_config.json"
-      ));
+      overrides = require(
+        path.resolve(process.cwd(), './data/config/last_config.json')
+      )
     } catch (err) {
       // logger.error(err + ', failed to load last conf overrides file!')
     }
@@ -91,16 +92,16 @@ function initConfig(args) {
   //3. load use defined exchange secret
   if (!_.isUndefined(args.secret)) {
     try {
-      overridesSecret = require(path.resolve(process.cwd(), args.secret));
+      overridesSecret = require(path.resolve(process.cwd(), args.secret))
     } catch (err) {
-      console.error(err + ", failed to load input secret overrides file!");
+      console.error(err + ', failed to load input secret overrides file!')
     }
   }
-  config = _.defaultsDeep(config, args, overrides, conf);
-  secret = _.defaultsDeep(overridesSecret, secret);
-  config.secret = secret;
-  config.logger = loggerInstance(config);
-  return config;
+  config = _.defaultsDeep(config, args, overrides, conf)
+  secret = _.defaultsDeep(overridesSecret, secret)
+  config.secret = secret
+  config.logger = loggerInstance(config)
+  return config
 }
 /**
  * init xcoin extra
@@ -108,9 +109,9 @@ function initConfig(args) {
  * @param {*} args
  */
 function initExtra(conf, args) {
-  module.exports.debug = args.debug;
-  var eventBus = new EventEmitter();
-  conf.eventBus = eventBus;
+  module.exports.debug = args.debug
+  var eventBus = new EventEmitter()
+  conf.eventBus = eventBus
 }
 /**
  * init xcoin database
@@ -119,49 +120,49 @@ function initExtra(conf, args) {
  * @param {*} cb
  */
 function initDb(xcoin, conf, cb) {
-  var authStr = "",
+  var authStr = '',
     authMechanism,
-    connectionString;
+    connectionString
   if (conf.secret.db.mongo.username) {
-    authStr = encodeURIComponent(conf.secret.db.mongo.username);
+    authStr = encodeURIComponent(conf.secret.db.mongo.username)
     if (conf.secret.db.mongo.password)
-      authStr += ":" + encodeURIComponent(conf.secret.db.mongo.password);
-    authStr += "@";
-    authMechanism = conf.secret.db.mongo.authMechanism || "DEFAULT";
+      authStr += ':' + encodeURIComponent(conf.secret.db.mongo.password)
+    authStr += '@'
+    authMechanism = conf.secret.db.mongo.authMechanism || 'DEFAULT'
   }
   if (conf.secret.db.mongo.connectionString) {
-    connectionString = conf.secret.db.mongo.connectionString;
+    connectionString = conf.secret.db.mongo.connectionString
   } else {
     connectionString =
-      "mongodb://" +
+      'mongodb://' +
       authStr +
       conf.secret.db.mongo.host +
-      ":" +
+      ':' +
       conf.secret.db.mongo.port +
-      "/" +
+      '/' +
       conf.db.mongo.db +
-      "?" +
+      '?' +
       (conf.secret.db.mongo.replicaSet
-        ? "&replicaSet=" + conf.secret.db.mongo.replicaSet
-        : "") +
-      (authMechanism ? "&authMechanism=" + authMechanism : "");
+        ? '&replicaSet=' + conf.secret.db.mongo.replicaSet
+        : '') +
+      (authMechanism ? '&authMechanism=' + authMechanism : '')
   }
-  require("mongodb").MongoClient.connect(
+  MongoClient.connect(
     connectionString,
     { useNewUrlParser: true, useUnifiedTopology: true },
     function (err, client) {
       if (err) {
-        console.error("WARNING: MongoDB Connection Error: ", err);
+        console.error('WARNING: MongoDB Connection Error: ', err)
         console.error(
-          "WARNING: without MongoDB some features (such as backfilling/simulation) may be disabled."
-        );
-        console.error("Attempted authentication string: " + connectionString);
-        if (cb) cb(null, xcoin);
-        return;
+          'WARNING: without MongoDB some features (such as backfilling/simulation) may be disabled.'
+        )
+        console.error('Attempted authentication string: ' + connectionString)
+        if (cb) cb(null, xcoin)
+        return
       }
-      var db = client.db(conf.db.mongo.db);
-      _.set(conf, "db.mongo", db);
-      if (cb) cb(null, xcoin);
+      var db = client.db(conf.db.mongo.db)
+      _.set(conf, 'db.mongo', db)
+      if (cb) cb(null, xcoin)
     }
-  );
+  )
 }

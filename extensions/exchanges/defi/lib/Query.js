@@ -1,6 +1,6 @@
-const { gql } = require("@apollo/client/core");
-const axios = require("axios");
-const cheerio = require("cheerio");
+const { gql } = require('@apollo/client/core')
+const axios = require('axios')
+const cheerio = require('cheerio')
 
 const GET_BUNDLE = gql`
   query getBundle($id: Number!) {
@@ -9,7 +9,7 @@ const GET_BUNDLE = gql`
       ethPriceUSD
     }
   }
-`;
+`
 const GET_TOKEN = gql`
   query gettoken($tokenAddress: String!) {
     token(id: $tokenAddress) {
@@ -26,7 +26,7 @@ const GET_TOKEN = gql`
       derivedUSD
     }
   }
-`;
+`
 const GET_TOKENS = gql`
   query getTokens($tokens: [Bytes]!) {
     tokens(where: { id_in: $tokens }) {
@@ -39,7 +39,7 @@ const GET_TOKENS = gql`
       totalSupply
     }
   }
-`;
+`
 const GET_TOKENS_WITH_POOL = gql`
   query getTokensWithPool($tokens: [Bytes]!) {
     tokens(where: { symbol_in: $tokens }) {
@@ -68,7 +68,7 @@ const GET_TOKENS_WITH_POOL = gql`
       }
     }
   }
-`;
+`
 const GET_TOKEN_WITH_POOL = gql`
   query getTokenWithPool($tokenAddress: String!) {
     token(id: $tokenAddress) {
@@ -94,7 +94,7 @@ const GET_TOKEN_WITH_POOL = gql`
       }
     }
   }
-`;
+`
 const GET_RECENT_HOT_TOKENS = gql`
   query getRecentHotTokens($limit: Int!, $since: Int!) {
     tokenDayDatas(
@@ -118,7 +118,7 @@ const GET_RECENT_HOT_TOKENS = gql`
       }
     }
   }
-`;
+`
 
 const GET_POOL = gql`
   query getPool($id: String!) {
@@ -137,7 +137,7 @@ const GET_POOL = gql`
       }
     }
   }
-`;
+`
 
 const GET_POOL_WITH_HOUR = gql`
   query getPoolWithHour($id: String!, $since: Int!, $limit: Int!, $skip: Int!) {
@@ -172,7 +172,7 @@ const GET_POOL_WITH_HOUR = gql`
       id
     }
   }
-`;
+`
 
 const GET_POOL_WITH_DAY = gql`
   query getPoolWithDay($id: String!, $since: Int!, $limit: Int!, $skip: Int!) {
@@ -207,7 +207,7 @@ const GET_POOL_WITH_DAY = gql`
       id
     }
   }
-`;
+`
 
 const GET_POOLS = gql`
   query getpools($pools: [Bytes]!) {
@@ -226,7 +226,7 @@ const GET_POOLS = gql`
       }
     }
   }
-`;
+`
 const GET_TOKEN_BY_ASSET = gql`
   query getTokenByAsset($asset: String!) {
     tokens(
@@ -243,93 +243,93 @@ const GET_TOKEN_BY_ASSET = gql`
       txCount
     }
   }
-`;
+`
 
 const getToken = async (
   client,
   tokenAddress,
-  url = "",
-  apiUrl = "",
-  apiKey = "",
+  url = '',
+  apiUrl = '',
+  apiKey = '',
   withInfo = true
 ) => {
-  let result, token;
+  let result, token
   result = await client.query({
     query: GET_TOKEN,
     variables: {
-      tokenAddress,
-    },
-  });
-  token = result.data.token;
+      tokenAddress
+    }
+  })
+  token = result.data.token
   if (withInfo) {
-    token = await getTokenExtraInfo(token, null, url, apiUrl, apiKey);
+    token = await getTokenExtraInfo(token, null, url, apiUrl, apiKey)
   }
   //console.log('getToken', token)
-  return token;
-};
+  return token
+}
 
 const getTokenByAsset = async (
   client,
   asset,
-  url = "",
-  apiUrl = "",
-  apiKey = "",
+  url = '',
+  apiUrl = '',
+  apiKey = '',
   withInfo = true
 ) => {
-  let result, token;
+  let result, token
   result = await client.query({
     query: GET_TOKEN_BY_ASSET,
     variables: {
-      asset,
-    },
-  });
+      asset
+    }
+  })
   // console.log("result", result.data.tokens);
-  if (!result.data.tokens.length) return null;
-  token = result.data.tokens[0];
+  if (!result.data.tokens.length) return null
+  token = result.data.tokens[0]
   if (withInfo) {
-    token = await getTokenExtraInfo(token, null, url, apiUrl, apiKey);
+    token = await getTokenExtraInfo(token, null, url, apiUrl, apiKey)
   }
   // console.log("getToken", token);
-  return token;
-};
+  return token
+}
 
 const getRecentHotTokens = async (client, since = 0, limit = 1000) => {
   let result = await client.query({
     query: GET_RECENT_HOT_TOKENS,
     variables: {
       limit,
-      since,
-    },
-  });
-  return result.data.tokenDayDatas;
-};
+      since
+    }
+  })
+  return result.data.tokenDayDatas
+}
 const getTokens = async (client, tokens) => {
   // console.log("getTokens", pools);
   let result = await client.query({
     query: GET_TOKENS,
     variables: {
-      tokens,
+      tokens
     },
-    fetchPolicy: "cache-first",
-  });
+    fetchPolicy: 'cache-first'
+  })
   //console.log("getTokens ok", result);
-  return result.data.tokens;
-};
+  return result.data.tokens
+}
 const getTokensWithPool = async (client, tokens) => {
-  console.log("getTokensWithPool", tokens);
+  console.log('getTokensWithPool', tokens)
   let result = await client.query({
     query: GET_TOKENS_WITH_POOL,
     variables: {
-      tokens,
+      tokens
     },
-    fetchPolicy: "cache-first",
-  });
-  console.log("getTokens ok", result);
-  return result.data.tokens;
-};
+    fetchPolicy: 'cache-first'
+  })
+  console.log('getTokens ok', result)
+  return result.data.tokens
+}
 const getTokenWithPool = async (
   client,
-  baseTokenAddr = "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c",
+  baseTokenAddr = '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
   tokenAddress
 ) => {
   //获得符合条件的交易对
@@ -343,11 +343,11 @@ const getTokenWithPool = async (
     query: GET_TOKEN_WITH_POOL,
     variables: {
       baseTokenAddr,
-      tokenAddress,
-    },
-  });
-  return result.data.token;
-};
+      tokenAddress
+    }
+  })
+  return result.data.token
+}
 
 const getTokenExtraInfo = async (token, symbol, url, apiUrl, apiKey) => {
   /* console.log(
@@ -358,44 +358,44 @@ const getTokenExtraInfo = async (token, symbol, url, apiUrl, apiKey) => {
       "&apikey=" +
       apiKey
   ); */
-  var output = JSON.parse(JSON.stringify(token ? token : symbol));
-  var address = token ? token.id : symbol.base;
+  var output = JSON.parse(JSON.stringify(token ? token : symbol))
+  var address = token ? token.id : symbol.base
   const { data } = await axios(
     apiUrl +
-      "?module=contract&action=getsourcecode&address=" +
+      '?module=contract&action=getsourcecode&address=' +
       address +
-      "&apikey=" +
+      '&apikey=' +
       apiKey
-  );
+  )
   try {
-    if (data.status == "1" && data.message == "OK") {
+    if (data.status == '1' && data.message == 'OK') {
       output.verified =
-        data.result[0].ABI != "Contract source code not verified";
-      output.contract_name = data.result[0].ContractName;
-      output.compiler_version = data.result[0].CompilerVersion.split("+")[0];
+        data.result[0].ABI != 'Contract source code not verified'
+      output.contract_name = data.result[0].ContractName
+      output.compiler_version = data.result[0].CompilerVersion.split('+')[0]
     } else {
-      console.log("error..", data);
+      console.log('error..', data)
     }
   } catch {}
   try {
-    const link = url + "/token/" + address;
-    const res = await axios(link);
-    const $ = cheerio.load(res.data);
-    if (url.indexOf("etherscan") >= 0) {
-      const symbol = $("#ContentPlaceHolder1_hdnSymbol").attr("value") || "";
-      output["total_supply"] =
+    const link = url + '/token/' + address
+    const res = await axios(link)
+    const $ = cheerio.load(res.data)
+    if (url.indexOf('etherscan') >= 0) {
+      const symbol = $('#ContentPlaceHolder1_hdnSymbol').attr('value') || ''
+      output['total_supply'] =
         parseFloat(
-          $(".card-body .hash-tag.text-truncate").text().split(",").join("")
-        ) || "";
-      let holders = $("#ContentPlaceHolder1_tr_tokenHolders")
+          $('.card-body .hash-tag.text-truncate').text().split(',').join('')
+        ) || ''
+      let holders = $('#ContentPlaceHolder1_tr_tokenHolders')
         .text()
-        .replace("Holders", "")
-        .replace(/\n/g, "")
-        .replace(/\(.*?\)/g, "")
-        .replace(/,/g, "")
-        .trim();
-      output["holders"] = parseInt(holders) || "";
-      output["symbol"] = symbol;
+        .replace('Holders', '')
+        .replace(/\n/g, '')
+        .replace(/\(.*?\)/g, '')
+        .replace(/,/g, '')
+        .trim()
+      output['holders'] = parseInt(holders) || ''
+      output['symbol'] = symbol
       /**
        * 
        * <li><a class='dropdown-item text-truncate' href='https://renq.io/' rel='nofollow' target='_blank' style='max-width: 15rem;'><i class='far fa-link fa-fw dropdown-item-icon me-1.5'></i><span title='https://renq.io/' data-bs-toggle='tooltip' data-bs-trigger='hover'>https://renq.io/</span></a></li><li><hr class='dropdown-divider'></li>
@@ -403,54 +403,53 @@ const getTokenExtraInfo = async (token, symbol, url, apiUrl, apiKey) => {
 
        */
       try {
-        output["social"] = {};
-        let lis = $("#ContentPlaceHolder1_divSummary .dropdown-menu").first();
+        output['social'] = {}
+        let lis = $('#ContentPlaceHolder1_divSummary .dropdown-menu').first()
         lis.children().each(function (i, elem) {
-          let liText = $(elem).text().trim();
+          let liText = $(elem).text().trim()
           if (i === 0) {
-            output["site"] = liText || "";
+            output['site'] = liText || ''
           } else if (liText) {
-            let link = $(elem).children(0).attr("href");
-            output["social"][liText] = link;
+            let link = $(elem).children(0).attr('href')
+            output['social'][liText] = link
           }
-        });
+        })
       } catch (e) {}
       //  output["social"] = $(".list-inline-item a.link-hover-secondary").text() | '';
       // console.log("output etherscan", output);
     } else {
-      const symbol =
-        $(".card-body .hash-tag.text-truncate").next().text() || "";
+      const symbol = $('.card-body .hash-tag.text-truncate').next().text() || ''
       // console.log("xxxxxx", res.data);
 
-      output["total_supply"] =
+      output['total_supply'] =
         parseFloat(
-          $(".card-body .hash-tag.text-truncate").text().split(",").join("")
-        ) || "";
-      output["holders"] =
+          $('.card-body .hash-tag.text-truncate').text().split(',').join('')
+        ) || ''
+      output['holders'] =
         parseInt(
-          $("#ContentPlaceHolder1_tr_tokenHolders .mr-3")
+          $('#ContentPlaceHolder1_tr_tokenHolders .mr-3')
             .text()
-            .split(",")
-            .join("")
-        ) || "";
-      output["symbol"] = symbol;
-      output["site"] =
-        $("#ContentPlaceHolder1_tr_officialsite_1 a").text() || "";
-      output["social"] = {};
-      $(".list-inline-item a.link-hover-secondary").each(function (i, elem) {
-        let ss = $(this).attr("data-original-title").split(": ");
+            .split(',')
+            .join('')
+        ) || ''
+      output['symbol'] = symbol
+      output['site'] =
+        $('#ContentPlaceHolder1_tr_officialsite_1 a').text() || ''
+      output['social'] = {}
+      $('.list-inline-item a.link-hover-secondary').each(function (i, elem) {
+        let ss = $(this).attr('data-original-title').split(': ')
         if (ss.length) {
-          output["social"][ss[0].trim()] = ss[1].trim();
+          output['social'][ss[0].trim()] = ss[1].trim()
         }
-      });
+      })
       //  output["social"] = $(".list-inline-item a.link-hover-secondary").text() | '';
     }
   } catch (error) {
-    console.log("error", error);
+    console.log('error', error)
   }
-  console.log("getToken".cyan, output.symbol, "ok");
-  return output;
-};
+  console.log('getToken'.cyan, output.symbol, 'ok')
+  return output
+}
 
 const getPool = async (client, id, token0, token1) => {
   // id = null, token0 = "0x2170ed0880ac9a755fd29b2688956bd959f933f8", token1 = ""
@@ -459,61 +458,61 @@ const getPool = async (client, id, token0, token1) => {
     let result = await client.query({
       query: GET_POOL,
       variables: {
-        id,
+        id
       },
-      fetchPolicy: "network-only",
-    });
+      fetchPolicy: 'network-only'
+    })
     //  console.log("result", result);
-    return result.data.pool;
+    return result.data.pool
   } else {
     let result = await client.query({
-      query: PAIR_QUERY_BY_TOEKNS(token0, token1),
-    });
+      query: PAIR_QUERY_BY_TOEKNS(token0, token1)
+    })
     if (result && result.data && result.data.pairs) {
-      return result.data.pairs[0];
+      return result.data.pairs[0]
     }
-    return null;
+    return null
   }
-};
+}
 
 const getPools = async (client, pools) => {
   // console.log("getPools", pools);
   let result = await client.query({
     query: GET_POOLS,
     variables: {
-      pools,
+      pools
     },
-    fetchPolicy: "network-only",
-  });
+    fetchPolicy: 'network-only'
+  })
   /* console.log(
     "\ngetPools ok".cyan,
     result.data.pools[3].token1.symbol,
     result.data.pools[3].token0Price 
   );*/
-  return result.data.pools;
-};
+  return result.data.pools
+}
 
 const getBundle = async (client) => {
   let result = await client.query({
-    query: GET_BUNDLE,
-  });
-  return result.data.bundle;
-};
+    query: GET_BUNDLE
+  })
+  return result.data.bundle
+}
 const getPoolWithHour = async (client, pair, since, limit, skip = 0) => {
-  console.log("getPoolWithHour", pair, since, limit, skip);
+  console.log('getPoolWithHour', pair, since, limit, skip)
   let result = await client.query({
     query: GET_POOL_WITH_HOUR,
     variables: {
       id: pair,
       since,
       limit,
-      skip,
+      skip
     },
-    fetchPolicy: "cache-first",
-  });
+    fetchPolicy: 'cache-first'
+  })
   // console.log("result.", result);
-  return result.data.pool;
-};
+  return result.data.pool
+}
 
 const getPoolWithDay = async (client, pair, since, limit, skip = 0) => {
   // console.log("getPoolWithDay", pair, since, limit, skip);
@@ -523,12 +522,12 @@ const getPoolWithDay = async (client, pair, since, limit, skip = 0) => {
       id: pair,
       since,
       limit,
-      skip,
+      skip
     },
-    fetchPolicy: "cache-first",
-  });
-  return result.data.pool;
-};
+    fetchPolicy: 'cache-first'
+  })
+  return result.data.pool
+}
 
 module.exports = {
   getRecentHotTokens,
@@ -542,5 +541,5 @@ module.exports = {
   getPools,
   getPoolWithHour,
   getPoolWithDay,
-  getBundle,
-};
+  getBundle
+}

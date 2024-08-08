@@ -1,45 +1,45 @@
-const path = require("path"),
-  // eslint-disable-next-line no-unused-vars
-  colors = require("colors"),
-  moment = require("moment"),
-  tb = require("timebucket"),
-  HttpsProxyAgent = require("https-proxy-agent"),
-  pancakeswap = require("./lib/pancakeswap"),
-  uniswap = require("./lib/uniswap"),
-  options = {};
-module.exports = function container(conf, so, inOptions) {
-  var authed_client;
-  var logger = conf.logger;
-  let exchagneId = so.exchange || "ccxt";
+const fs = require('fs')
+const path = require('path')
+const colors = require('colors')
+const moment = require('moment')
+const tb = require('timebucket')
+const HttpsProxyAgent = require('https-proxy-agent')
+const pancakeswap = require('./lib/pancakeswap')
+const uniswap = require('./lib/uniswap')
+const options = {}
+
+module.exports = function DefiConnector(conf, so, inOptions) {
+  var authed_client
+  var logger = conf.logger
+  let exchagneId = so.exchange || 'ccxt'
   let ccxt = {
     pancakeswap,
-    uniswap,
-  };
+    uniswap
+  }
   if (inOptions) {
-    options = Object.assign(options, inOptions);
+    options = Object.assign(options, inOptions)
   }
   function authedClient() {
     if (!authed_client) {
       if (!conf.secret.keys[exchagneId]) {
         throw new Error(
-          "please configure your " +
+          'please configure your ' +
             exchagneId +
-            " credentials in " +
-            path.resolve(__dirname, "conf.js")
-        );
+            ' credentials in ' +
+            path.resolve(__dirname, 'conf.js')
+        )
       }
       authed_client = new ccxt[exchagneId]({
         wallet: conf.secret.keys[exchagneId].wallet,
-        exchange: exchagneId,
-      });
-      setProxy(authed_client);
+        exchange: exchagneId
+      })
+      setProxy(authed_client)
     }
-    return authed_client;
+    return authed_client
   }
   function setProxy(client) {
     if (so.proxy) {
-      const agent = new HttpsProxyAgent(so.proxy);
-      client.agent = agent;
+      client.agent = HttpsProxyAgent(so.proxy)
     }
   }
   /**
@@ -50,81 +50,81 @@ module.exports = function container(conf, so, inOptions) {
    */
   function retry(method, args, err) {
     if (
-      method !== "getTrades" &&
-      method !== "getKLines" &&
-      method !== "getTickers"
+      method !== 'getTrades' &&
+      method !== 'getKLines' &&
+      method !== 'getTickers'
     ) {
       console.error(
         (
-          "\nretry " +
+          '\nretry ' +
           exchagneId +
-          " API is down! unable to call " +
+          ' API is down! unable to call ' +
           method +
-          ", retrying in 20s"
+          ', retrying in 20s'
         ).red
-      );
-      if (err) console.error(err);
-      console.error(args.slice(0, -1));
+      )
+      if (err) console.error(err)
+      console.error(args.slice(0, -1))
     }
     setTimeout(function () {
-      exchange[method].apply(exchange, args);
-    }, 20000);
+      exchange[method].apply(exchange, args)
+    }, 20000)
   }
-  var orders = {};
-  var products;
+  var orders = {}
+  var products
   var exchange = {
     name: exchagneId,
-    historyScan: "forward",
+    historyScan: 'forward',
     historyScanUsesTime: true,
     defi: true,
     makerFee: 0.1,
     takerFee: 0.1,
     periodOfHour(period) {
       let periodToHour = {
-        "1h": "1",
-        "2h": "2",
-        "4h": "4",
-        "8h": "8",
-        "12h": "12",
-        "24h": "24",
-        "1d": "24",
-        "3d": "72",
-        "1w": "168",
-      };
-      return periodToHour[period];
+        '1h': '1',
+        '2h': '2',
+        '4h': '4',
+        '8h': '8',
+        '12h': '12',
+        '24h': '24',
+        '1d': '24',
+        '3d': '72',
+        '1w': '168'
+      }
+      return periodToHour[period]
     },
     initFees() {
       if (
         conf.secret.keys[exchagneId] &&
         conf.secret.keys[exchagneId].takerFee
       ) {
-        this.takerFee = conf.secret.keys[exchagneId].takerFee;
+        this.takerFee = conf.secret.keys[exchagneId].takerFee
       }
       if (
         conf.secret.keys[exchagneId] &&
         conf.secret.keys[exchagneId].makerFee
       ) {
-        this.makerFee = conf.secret.keys[exchagneId].makerFee;
+        this.makerFee = conf.secret.keys[exchagneId].makerFee
       }
       if (so.takerFee) {
-        this.takerFee = so.takerFee;
+        this.takerFee = so.takerFee
       }
       if (so.makerFee) {
-        this.makerFee = so.makerFee;
+        this.makerFee = so.makerFee
       }
     },
     refreshProducts(cb, force = true) {
       if (!force) {
-        return cb(this.getProducts());
+        return cb(this.getProducts())
       }
-      var client = authedClient();
-      console.log("refreshProducts start..", JSON.stringify(conf.defi));
+      var client = authedClient()
+      console.log('refreshProducts start..', JSON.stringify(conf.defi))
       client.fetchMarkets(conf.defi).then(({ newTokenList, blacklist }) => {
         console.log(
-          "refreshProducts ok..",
+          'refreshProducts ok..',
           newTokenList.length,
           blacklist.length
-        );
+        )
         const resProducts = newTokenList.map((market) => {
           // NOTE: price_filter also contains minPrice and maxPrice
           return {
@@ -140,73 +140,67 @@ module.exports = function container(conf, so, inOptions) {
             volumeUSD: market.volumeUSD,
             txCount: market.txCount,
             label: market.name
-              ? market.name.replace("unknown", market.symbol)
+              ? market.name.replace('unknown', market.symbol)
               : market.name,
             verified: market.verified,
             contract_name: market.contract_name,
-            total_supply: market.total_supply || "",
-            holders: market.holders || "",
-            site: market.site || "",
-            social: market.social || "",
+            total_supply: market.total_supply || '',
+            holders: market.holders || '',
+            site: market.site || '',
+            social: market.social || '',
             exchagne_id: exchagneId,
-            product_id: market.symbol + "-" + market.csymbol,
-            normalized: exchagneId + "." + market.symbol + "-" + market.csymbol,
-          };
-        });
+            product_id: market.symbol + '-' + market.csymbol,
+            normalized: exchagneId + '.' + market.symbol + '-' + market.csymbol
+          }
+        })
         //  console.log('resProducts', resProducts.length)
-        const exitProducts = this.getProducts();
+        const exitProducts = this.getProducts()
         //清理不需要的地址
-        const newProducts = [];
+        const newProducts = []
         resProducts.map((product) => {
           //合并老的地址
-          const find = exitProducts.find((p) => p.id === product.id);
+          const find = exitProducts.find((p) => p.id === product.id)
           if (find) {
-            Object.assign(find, product);
+            Object.assign(find, product)
           } else {
-            newProducts.push(product);
-            exitProducts.push(product);
+            newProducts.push(product)
+            exitProducts.push(product)
           }
-        });
+        })
         console.log(
-          "\nrefreshProducts ok all %s,new %s",
+          '\nrefreshProducts ok all %s,new %s',
           exitProducts.length,
           newProducts.length
-        );
-        var target = require("path").resolve(
+        )
+        var target = path.resolve(
           __dirname,
-          "../../../data/exchanges/" + exchagneId + "_products.json"
-        );
-        require("fs").writeFileSync(
-          target,
-          JSON.stringify(exitProducts, null, 2)
-        );
+          '../../../data/exchanges/' + exchagneId + '_products.json'
+        )
+        fs.writeFileSync(target, JSON.stringify(exitProducts, null, 2))
         if (newProducts.length) {
-          var newProductTarget = require("path").resolve(
+          var newProductTarget = path.resolve(
             __dirname,
-            "../../../data/exchanges/" + exchagneId + "_new.json"
-          );
-          require("fs").writeFileSync(
+            '../../../data/exchanges/' + exchagneId + '_new.json'
+          )
+          fs.writeFileSync(
             newProductTarget,
             JSON.stringify(newProducts, null, 2)
             /*  { flag: "a" } */
-          );
+          )
         }
         if (blacklist.length) {
-          var blacklistTarget = require("path").resolve(
+          var blacklistTarget = path.resolve(
             __dirname,
-            "../../../data/exchanges/" + exchagneId + "_blacklist.json"
-          );
-          require("fs").writeFileSync(
-            blacklistTarget,
-            JSON.stringify(blacklist, null, 2)
-          );
+            '../../../data/exchanges/' + exchagneId + '_blacklist.json'
+          )
+          fs.writeFileSync(blacklistTarget, JSON.stringify(blacklist, null, 2))
         }
         // console.log('wrote', target)
-        cb(exitProducts, newProducts);
-      });
+        cb(exitProducts, newProducts)
+      })
     },
     addProducts(plist, cb) {
-      var client = authedClient();
+      var client = authedClient()
       // console.log("addProducts start..", JSON.stringify(plist));
       client.fetchProducts(plist).then(({ newTokenList }) => {
         // console.log("addProducts ok..", newTokenList);
@@ -225,91 +219,88 @@ module.exports = function container(conf, so, inOptions) {
             volumeUSD: market.volumeUSD,
             txCount: market.txCount,
             label: market.name
-              ? market.name.replace("unknown", market.symbol)
+              ? market.name.replace('unknown', market.symbol)
               : market.name,
             verified: market.verified,
             contract_name: market.contract_name,
-            total_supply: market.total_supply || "",
-            holders: market.holders || "",
-            site: market.site || "",
-            social: market.social || "",
+            total_supply: market.total_supply || '',
+            holders: market.holders || '',
+            site: market.site || '',
+            social: market.social || '',
             exchagne_id: exchagneId,
-            product_id: market.symbol + "-" + market.csymbol,
-            normalized: exchagneId + "." + market.symbol + "-" + market.csymbol,
-          };
-        });
+            product_id: market.symbol + '-' + market.csymbol,
+            normalized: exchagneId + '.' + market.symbol + '-' + market.csymbol
+          }
+        })
         // logger.info("find new products".yellow, resProducts);
-        const exitProducts = this.getProducts();
+        const exitProducts = this.getProducts()
         resProducts.map((product) => {
           //合并老的地址
-          const find = exitProducts.find((p) => p.id === product.id);
+          const find = exitProducts.find((p) => p.id === product.id)
           if (find) {
-            Object.assign(find, product);
+            Object.assign(find, product)
           } else {
-            exitProducts.push(product);
+            exitProducts.push(product)
           }
-        });
+        })
         console.log(
-          "\nrefreshProducts ok all %s,new %s",
+          '\nrefreshProducts ok all %s,new %s',
           exitProducts.length,
           resProducts.length
-        );
-        var target = require("path").resolve(
+        )
+        var target = path.resolve(
           __dirname,
-          "../../../data/exchanges/" + exchagneId + "_products.json"
-        );
-        require("fs").writeFileSync(
-          target,
-          JSON.stringify(exitProducts, null, 2)
-        );
+          '../../../data/exchanges/' + exchagneId + '_products.json'
+        )
+        fs.writeFileSync(target, JSON.stringify(exitProducts, null, 2))
         if (resProducts.length) {
-          var newProductTarget = require("path").resolve(
+          var newProductTarget = path.resolve(
             __dirname,
-            "../../../data/exchanges/" + exchagneId + "_new.json"
-          );
-          require("fs").writeFileSync(
+            '../../../data/exchanges/' + exchagneId + '_new.json'
+          )
+          fs.writeFileSync(
             newProductTarget,
             JSON.stringify(resProducts, null, 2)
             /*  { flag: "a" } */
-          );
+          )
         }
-        cb(resProducts);
-      });
+        cb(resProducts)
+      })
     },
     getProducts: function () {
       try {
-        if (products) return products;
-        return require(`../../../data/exchanges/${exchagneId}_products.json`);
+        if (products) return products
+        return require(`../../../data/exchanges/${exchagneId}_products.json`)
       } catch (e) {
-        return [];
+        return []
       }
     },
     getPoolOptions(opts) {
-      var product;
+      var product
       if (opts.product_id) {
-        product = products.find((p) => p.product_id === opts.product_id);
+        product = products.find((p) => p.product_id === opts.product_id)
       } else if (opts.asset) {
-        product = products.find((p) => p.asset === opts.asset);
+        product = products.find((p) => p.asset === opts.asset)
       }
       if (product) {
-        opts.id = product.id;
-        opts.decimals = product.decimals;
-        opts.asset = product.asset;
-        opts.currency = product.currency;
-        opts.symbol = product.symbol;
-        opts.csymbol = product.csymbol;
+        opts.id = product.id
+        opts.decimals = product.decimals
+        opts.asset = product.asset
+        opts.currency = product.currency
+        opts.symbol = product.symbol
+        opts.csymbol = product.csymbol
       }
-      return opts;
+      return opts
     },
     getTrades: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var authlient = authedClient();
-      var args = {};
+      var func_args = [].slice.call(arguments)
+      var authlient = authedClient()
+      var args = {}
       if (!opts.from) {
-        opts.from = 0;
+        opts.from = 0
       }
       //  console.log('getTrades', opts, args)
-      this.getPoolOptions(opts);
+      this.getPoolOptions(opts)
       // console.log('getTrades', opts, args)
       authlient
         .fetchTrades(opts, args)
@@ -320,38 +311,38 @@ module.exports = function container(conf, so, inOptions) {
             time: trade.timestamp,
             size: parseFloat(trade.amount),
             price: trade.price,
-            side: trade.side,
-          }));
+            side: trade.side
+          }))
           // console.log('fetchTrades ok', trades[0])
-          cb(null, trades);
+          cb(null, trades)
         })
         .catch(function (error) {
-          logger.error("getTrades An error occurred:" + error.toString());
-          return retry("getTrades", func_args);
-        });
+          logger.error('getTrades An error occurred:' + error.toString())
+          return retry('getTrades', func_args)
+        })
     },
     getKLines: function (opts, cb) {
       // console.log("getKLines", opts);
-      var func_args = [].slice.call(arguments);
-      var authlient = authedClient();
-      var args = {};
+      var func_args = [].slice.call(arguments)
+      var authlient = authedClient()
+      var args = {}
       if (!opts.from) {
-        opts.from = 0;
+        opts.from = 0
       }
-      if (opts.period === "1d") {
+      if (opts.period === '1d') {
         opts.from = tb()
           .resize(opts.period)
           .subtract(opts.limit)
-          .toMilliseconds();
-        this.getPoolOptions(opts);
+          .toMilliseconds()
+        this.getPoolOptions(opts)
         authlient
           .fetchOHLCV2(opts, args)
           .then((result) => {
-            var klines = [];
+            var klines = []
             result.forEach((kline) => {
-              let d = tb(kline[0]).resize(opts.period);
-              let de = tb(kline[0]).resize(opts.period).add(1);
-              const find = klines.find((kl) => kl.period_id === d.toString());
+              let d = tb(kline[0]).resize(opts.period)
+              let de = tb(kline[0]).resize(opts.period).add(1)
+              const find = klines.find((kl) => kl.period_id === d.toString())
               if (!find) {
                 klines.push({
                   period_id: d.toString(),
@@ -359,33 +350,33 @@ module.exports = function container(conf, so, inOptions) {
                   size: opts.period,
                   close_time: de.toMilliseconds() - 1,
                   closeStr: moment(de.toMilliseconds() - 1).format(
-                    "YYYYMMDDHHMM"
+                    'YYYYMMDDHHMM'
                   ),
                   open: kline[1],
                   high: kline[2],
                   low: kline[3],
                   close: kline[4],
-                  volume: kline[5],
-                });
+                  volume: kline[5]
+                })
               } else {
                 Object.assign(find, {
                   high: Math.max(find.high, kline[2]),
                   low: Math.min(find.low, kline[3]),
                   close: kline[4],
-                  volume: find.volume + kline[5],
-                });
+                  volume: find.volume + kline[5]
+                })
               }
-            });
+            })
             /* console.log(
               "fetchOHLCV ok",
               klines.length,
               klines[klines.length - 2],
               klines[klines.length - 1]
             ); */
-            cb(null, klines);
+            cb(null, klines)
           })
           .catch(function (error) {
-            logger.error("getKLines An error occurred:" + error.toString());
+            logger.error('getKLines An error occurred:' + error.toString())
             if (
               error.name &&
               error.name.match(
@@ -395,23 +386,23 @@ module.exports = function container(conf, so, inOptions) {
               )
             ) {
               return cb(error.name, {
-                status: "rejected",
-                reject_reason: error.name,
-              });
+                status: 'rejected',
+                reject_reason: error.name
+              })
             }
-            return retry("getKLines", func_args);
-          });
+            return retry('getKLines', func_args)
+          })
       } else {
-        let comineNumb = this.periodOfHour(opts.period);
-        opts.limit = comineNumb * opts.limit;
+        let comineNumb = this.periodOfHour(opts.period)
+        opts.limit = comineNumb * opts.limit
         /* console.log(
         "opts",
         opts.period,
         opts.limit,
         this.periodOfHour(opts.period)
       ); */
-        opts.from = tb().resize("1h").subtract(opts.limit).toMilliseconds();
-        this.getPoolOptions(opts);
+        opts.from = tb().resize('1h').subtract(opts.limit).toMilliseconds()
+        this.getPoolOptions(opts)
         //   var hour_period = authlient.periodOfHour(opts.period)
         authlient
           .fetchOHLCV(opts, args)
@@ -424,11 +415,11 @@ module.exports = function container(conf, so, inOptions) {
             result[result.length - 2],
             result[result.length - 1]
           ); */
-            var klines = [];
+            var klines = []
             result.forEach((kline) => {
-              let d = tb(kline[0]).resize(opts.period);
-              let de = tb(kline[0]).resize(opts.period).add(1);
-              const find = klines.find((kl) => kl.period_id === d.toString());
+              let d = tb(kline[0]).resize(opts.period)
+              let de = tb(kline[0]).resize(opts.period).add(1)
+              const find = klines.find((kl) => kl.period_id === d.toString())
               if (!find) {
                 klines.push({
                   period_id: d.toString(),
@@ -436,33 +427,33 @@ module.exports = function container(conf, so, inOptions) {
                   size: opts.period,
                   close_time: de.toMilliseconds() - 1,
                   closeStr: moment(de.toMilliseconds() - 1).format(
-                    "YYYYMMDDHHMM"
+                    'YYYYMMDDHHMM'
                   ),
                   open: kline[1],
                   high: kline[2],
                   low: kline[3],
                   close: kline[4],
-                  volume: kline[5],
-                });
+                  volume: kline[5]
+                })
               } else {
                 Object.assign(find, {
                   high: Math.max(find.high, kline[2]),
                   low: Math.min(find.low, kline[3]),
                   close: kline[4],
-                  volume: find.volume + kline[5],
-                });
+                  volume: find.volume + kline[5]
+                })
               }
-            });
+            })
             /* console.log(
             "fetchOHLCV ok",
             klines.length,
             klines[klines.length - 2],
             klines[klines.length - 1]
           ); */
-            cb(null, klines);
+            cb(null, klines)
           })
           .catch(function (error) {
-            logger.error("getKLines An error occurred:" + error.toString());
+            logger.error('getKLines An error occurred:' + error.toString())
             if (
               error.name &&
               error.name.match(
@@ -472,40 +463,40 @@ module.exports = function container(conf, so, inOptions) {
               )
             ) {
               return cb(error.name, {
-                status: "rejected",
-                reject_reason: error.name,
-              });
+                status: 'rejected',
+                reject_reason: error.name
+              })
             }
-            return retry("getKLines", func_args);
-          });
+            return retry('getKLines', func_args)
+          })
       }
     },
     cancelOrder: function (opts, cb) {
       //去中心化平台无法取消交易
-      return cb(null);
+      return cb(null)
     },
     buy: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
-      if (typeof opts.post_only === "undefined") {
-        opts.post_only = true;
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
+      if (typeof opts.post_only === 'undefined') {
+        opts.post_only = true
       }
-      opts.type = "limit";
-      var args = {};
-      if (opts.order_type === "taker") {
-        delete opts.post_only;
-        opts.type = "market";
+      opts.type = 'limit'
+      var args = {}
+      if (opts.order_type === 'taker') {
+        delete opts.post_only
+        opts.type = 'market'
       }
       //部分exchange不支持市价单
       if (!client.has.createMarketOrder) {
-        opts.type = "limit";
+        opts.type = 'limit'
       }
-      opts.side = "buy";
-      delete opts.order_type;
-      var order = {};
-      this.getPoolOptions(opts);
-      opts.extractIn = opts.price ? opts.price * opts.size : opts.size;
-      opts.slippage = conf.max_slippage_pct;
+      opts.side = 'buy'
+      delete opts.order_type
+      var order = {}
+      this.getPoolOptions(opts)
+      opts.extractIn = opts.price ? opts.price * opts.size : opts.size
+      opts.slippage = conf.max_slippage_pct
       //console.log("buy opts", opts);
       client
         .createOrder(
@@ -518,30 +509,30 @@ module.exports = function container(conf, so, inOptions) {
           args
         )
         .then((result) => {
-          console.log("buy result...", result);
-          if (result && result.message === "Insufficient funds") {
+          console.log('buy result...', result)
+          if (result && result.message === 'Insufficient funds') {
             order = {
-              status: "rejected",
-              reject_reason: "balance",
-            };
-            return cb(null, order);
+              status: 'rejected',
+              reject_reason: 'balance'
+            }
+            return cb(null, order)
           }
           order = {
             id: result ? result.id : null,
-            status: "open",
+            status: 'open',
             price: result.price || opts.price,
             size: opts.size,
             post_only: !!opts.post_only,
             created_at: new Date().getTime(),
-            filled_size: "0",
-            ordertype: opts.order_type,
-          };
-          orders["~" + result.id] = order;
+            filled_size: '0',
+            ordertype: opts.order_type
+          }
+          orders['~' + result.id] = order
           // console.log('buy ok ', order)
-          cb(null, order);
+          cb(null, order)
         })
         .catch(function (error) {
-          logger.error("buy An error occurred:" + error.toString());
+          logger.error('buy An error occurred:' + error.toString())
 
           // decide if this error is allowed for a retry:
           // {"code":-1013,"msg":"Filter failure: MIN_NOTIONAL"}
@@ -554,35 +545,35 @@ module.exports = function container(conf, so, inOptions) {
               )
           ) {
             return cb(null, {
-              status: "rejected",
-              reject_reason: error.name,
-            });
+              status: 'rejected',
+              reject_reason: error.name
+            })
           }
-          return retry("buy", func_args);
-        });
+          return retry('buy', func_args)
+        })
     },
     sell: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
-      if (typeof opts.post_only === "undefined") {
-        opts.post_only = true;
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
+      if (typeof opts.post_only === 'undefined') {
+        opts.post_only = true
       }
-      opts.type = "limit";
-      var args = {};
-      if (opts.order_type === "taker") {
-        delete opts.post_only;
-        opts.type = "market";
+      opts.type = 'limit'
+      var args = {}
+      if (opts.order_type === 'taker') {
+        delete opts.post_only
+        opts.type = 'market'
       }
       //部分exchange不支持市价单
       if (!client.has.createMarketOrder) {
-        opts.type = "limit";
+        opts.type = 'limit'
       }
-      opts.side = "sell";
-      delete opts.order_type;
-      var order = {};
-      this.getPoolOptions(opts);
-      opts.extractIn = opts.price ? opts.price * opts.size : opts.size;
-      opts.slippage = conf.max_slippage_pct;
+      opts.side = 'sell'
+      delete opts.order_type
+      var order = {}
+      this.getPoolOptions(opts)
+      opts.extractIn = opts.price ? opts.price * opts.size : opts.size
+      opts.slippage = conf.max_slippage_pct
       // console.log("sell opts", opts);
       client
         .createOrder(
@@ -596,37 +587,37 @@ module.exports = function container(conf, so, inOptions) {
         )
         .then((result) => {
           //  console.log("sell result...", result);
-          if (result && result.message === "Insufficient funds") {
+          if (result && result.message === 'Insufficient funds') {
             order = {
-              status: "rejected",
-              reject_reason: "balance",
-            };
-            return cb(null, order);
+              status: 'rejected',
+              reject_reason: 'balance'
+            }
+            return cb(null, order)
           } else if (!result.id) {
             return cb(null, {
-              status: "rejected",
-              reject_reason: "create order error",
-            });
+              status: 'rejected',
+              reject_reason: 'create order error'
+            })
           }
           order = {
             id: result ? result.id : null,
-            status: "open",
+            status: 'open',
             price: result.price || opts.price,
             size: opts.size,
             post_only: !!opts.post_only,
             created_at: new Date().getTime(),
-            filled_size: "0",
-            ordertype: opts.order_type,
-          };
-          orders["~" + result.id] = order;
-          cb(null, order);
+            filled_size: '0',
+            ordertype: opts.order_type
+          }
+          orders['~' + result.id] = order
+          cb(null, order)
         })
         .catch(function (error) {
-          logger.error("sell An error occurred:" + error.toString());
+          logger.error('sell An error occurred:' + error.toString())
           // decide if this error is allowed for a retry:
           // {"code":-1013,"msg":"Filter failure: MIN_NOTIONAL"}
           // {"code":-2010,"msg":"Account has insufficient balance for requested action"}
-          console.log("error", error.toString());
+          console.log('error', error.toString())
           if (
             error
               .toString()
@@ -635,28 +626,28 @@ module.exports = function container(conf, so, inOptions) {
               )
           ) {
             return cb(null, {
-              status: "rejected",
-              reject_reason: error.name,
-            });
+              status: 'rejected',
+              reject_reason: error.name
+            })
           }
           if (error.message.match(new RegExp(/-1013|MIN_NOTIONAL|-2010/))) {
             return cb(null, {
-              status: "rejected",
-              reject_reason: "balance",
-            });
+              status: 'rejected',
+              reject_reason: 'balance'
+            })
           }
-          return retry("sell", func_args);
-        });
+          return retry('sell', func_args)
+        })
     },
     getBalance: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
-      this.getPoolOptions(opts);
-      let tokens = [opts.asset];
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
+      this.getPoolOptions(opts)
+      let tokens = [opts.asset]
       if (opts.symbols) {
         tokens = opts.symbols.map((s) => {
-          return s.asset;
-        });
+          return s.asset
+        })
       }
       // console.log("getBalance", tokens);
       client
@@ -675,74 +666,74 @@ module.exports = function container(conf, so, inOptions) {
               total: 0,
             },
           }; */
-          var balance = { asset: 0, currency: 0 };
+          var balance = { asset: 0, currency: 0 }
           Object.keys(result).forEach(function (key) {
             if (key.toLowerCase() === opts.currency.toLowerCase()) {
-              balance.currency = result[key].free + result[key].used;
-              balance.currency_hold = result[key].used;
+              balance.currency = result[key].free + result[key].used
+              balance.currency_hold = result[key].used
             } else {
-              const num = result[key].free + result[key].used;
+              const num = result[key].free + result[key].used
               // if (num > 0) {
-              if (!balance.assets) balance.assets = {};
+              if (!balance.assets) balance.assets = {}
               //  if (key.toLowerCase() !== opts.asset.toLowerCase()) {
               balance.assets[key] = {
                 asset: num,
-                asset_hold: result[key].used,
-              };
+                asset_hold: result[key].used
+              }
               // }
               // }
             }
             if (key.toLowerCase() === opts.asset.toLowerCase()) {
-              balance.asset = result[key].free + result[key].used;
-              balance.asset_hold = result[key].used;
+              balance.asset = result[key].free + result[key].used
+              balance.asset_hold = result[key].used
             }
-          });
+          })
           //   console.log("getBalance result", balance);
-          cb(null, balance);
+          cb(null, balance)
         })
         .catch(function (error) {
-          logger.error("getBalance An error occurred:" + error.toString());
-          return retry("getBalance", func_args);
-        });
+          logger.error('getBalance An error occurred:' + error.toString())
+          return retry('getBalance', func_args)
+        })
     },
     getOrder: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
-      var order = orders["~" + opts.order_id] || {};
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
+      var order = orders['~' + opts.order_id] || {}
       // module=transaction&action=gettxreceiptstatus&txhash=0xe9975702518c79caf81d5da65dea689dcac701fcdd063f848d4f03c85392fd00&apikey=YourApiKeyToken
       client.fetchOrder(opts.order_id).then(
         function (body) {
-          console.log("getOrder", body);
-          if (body.status === "rejected") {
-            order.status = "rejected";
-            order.reject_reason = "balance";
-            order.done_at = new Date().getTime();
-            order.filled_size = 0;
-            return cb(null, order);
-          } else if (body.status !== "open" && body.status !== "canceled") {
-            order.status = "done";
-            order.done_at = new Date().getTime();
-            order.defi_fee = body.defi_fee;
-            order.filled_size = 0;
-            return cb(null, order);
+          console.log('getOrder', body)
+          if (body.status === 'rejected') {
+            order.status = 'rejected'
+            order.reject_reason = 'balance'
+            order.done_at = new Date().getTime()
+            order.filled_size = 0
+            return cb(null, order)
+          } else if (body.status !== 'open' && body.status !== 'canceled') {
+            order.status = 'done'
+            order.done_at = new Date().getTime()
+            order.defi_fee = body.defi_fee
+            order.filled_size = 0
+            return cb(null, order)
           }
-          cb(null, order);
+          cb(null, order)
         },
         function (err) {
           if (
             err.name &&
             err.name.match(new RegExp(/InvalidOrder|BadRequest/))
           ) {
-            return cb(err);
+            return cb(err)
           }
-          return retry("getOrder", func_args, err);
+          return retry('getOrder', func_args, err)
         }
-      );
+      )
     },
     getQuote: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
-      this.getPoolOptions(opts);
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
+      this.getPoolOptions(opts)
       // console.log("getQuote ...", opts);
       client
         .fetchTicker(opts)
@@ -751,36 +742,36 @@ module.exports = function container(conf, so, inOptions) {
           cb(null, {
             bid: result.bid,
             ask: result.ask,
-            dayVolume: result.dayVolume,
-          });
+            dayVolume: result.dayVolume
+          })
         })
         .catch(function (error) {
-          logger.error("getQuote An error occurred:" + error.toString());
-          return retry("getQuote", func_args);
-        });
+          logger.error('getQuote An error occurred:' + error.toString())
+          return retry('getQuote', func_args)
+        })
     },
     getTickers: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
       opts.symbols.forEach((f) => {
-        this.getPoolOptions(f);
-      });
+        this.getPoolOptions(f)
+      })
       // console.log("getTickers ...", opts.symbols);
       client
         .fetchTickers(opts.symbols)
         .then((result) => {
           Object.keys(result).forEach((r) => {
             result[r].normalized =
-              (options.defaultType === "future"
-                ? exchagneId + "future."
-                : exchagneId + ".") + r.replace("/", "-");
-          });
+              (options.defaultType === 'future'
+                ? exchagneId + 'future.'
+                : exchagneId + '.') + r.replace('/', '-')
+          })
           // console.log("getTickers result...", result);
           //  logger.info("getTickers ", result);
-          cb(null, result);
+          cb(null, result)
         })
         .catch(function (error) {
-          logger.error("getTickers An error occurred:" + error.toString());
+          logger.error('getTickers An error occurred:' + error.toString())
           if (
             error.name &&
             error.name.match(
@@ -788,74 +779,71 @@ module.exports = function container(conf, so, inOptions) {
             )
           ) {
             return cb(error.name, {
-              status: "rejected",
-              reject_reason: error.name,
-            });
+              status: 'rejected',
+              reject_reason: error.name
+            })
           }
-          return retry("getTickers", func_args);
-        });
+          return retry('getTickers', func_args)
+        })
     },
     getPool: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
-      this.getPoolOptions(opts);
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
+      this.getPoolOptions(opts)
       // console.log("getPool...", opts);
       client
         .fetchPool(opts)
         .then((result) => {
           // console.log('getPair result...', result)
-          cb(null, result);
+          cb(null, result)
         })
         .catch(function (error) {
-          console.error("An error occurred", error);
-          return retry("getPair", func_args);
-        });
+          console.error('An error occurred', error)
+          return retry('getPair', func_args)
+        })
     },
     getToken: function (opts, cb) {
-      var func_args = [].slice.call(arguments);
-      var client = authedClient();
+      var func_args = [].slice.call(arguments)
+      var client = authedClient()
       client
         .fetchToken(opts)
         .then((result) => {
           // console.log("getToken result...", result);
-          cb(null, result);
+          cb(null, result)
         })
         .catch(function (error) {
-          console.error("An error occurred", error);
-          return retry("getToken", func_args);
-        });
+          console.error('An error occurred', error)
+          return retry('getToken', func_args)
+        })
     },
     getCursor: function (trade) {
       // console.log('getCursor result...', trade, (trade.time || trade))
-      return trade.time || trade;
+      return trade.time || trade
     },
     updateSymbols: function (symbols) {
-      products = this.getProducts();
-      let oldProducts = this.getProducts();
+      products = this.getProducts()
+      let oldProducts = this.getProducts()
       let filterProducts = oldProducts.filter(
         (p) => p.holders < so.defi.maxHolders
-      );
+      )
       filterProducts = filterProducts.filter(
         (p) => p.volumeUSD && p.volumeUSD < so.defi.maxVolumeUSD
-      );
+      )
 
-      var target = require("path").resolve(
+      var target = path.resolve(
         __dirname,
-        "../../../data/exchanges/" + exchagneId + "_products.json"
-      );
-      require("fs").writeFileSync(
-        target,
-        JSON.stringify(filterProducts, null, 2)
-      );
+        '../../../data/exchanges/' + exchagneId + '_products.json'
+      )
+      fs.writeFileSync(target, JSON.stringify(filterProducts, null, 2))
       if (symbols) {
         return symbols
           .filter((sy) => {
-            return filterProducts.find((p) => p.normalized === sy.normalized);
+            return filterProducts.find((p) => p.normalized === sy.normalized)
           })
           .map((sy) => {
             let product = filterProducts.find(
               (p) => p.normalized === sy.normalized
-            );
+            )
             return {
               asset: product.asset,
               currency: product.currency,
@@ -865,14 +853,14 @@ module.exports = function container(conf, so, inOptions) {
               decimals: product.decimals,
               exchange_id: product.exchagne_id,
               product_id: product.product_id,
-              normalized: product.normalized,
-            };
-          });
+              normalized: product.normalized
+            }
+          })
       } else {
-        return [];
+        return []
       }
-    },
-  };
-  so.symbols = exchange.updateSymbols(so.symbols);
-  return exchange;
-};
+    }
+  }
+  so.symbols = exchange.updateSymbols(so.symbols)
+  return exchange
+}
